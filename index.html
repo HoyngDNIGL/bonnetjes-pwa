@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>DNIGL Bonnetjes</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bonnetjes">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h1>Bon indienen</h1>
+
+  <form id="form">
+    <label for="wieBenJij">Wie ben jij</label>
+    <select id="wieBenJij" required></select>
+
+    <label for="photo">Foto van de bon</label>
+    <input type="file" id="photo" accept="image/*" capture="environment" required>
+
+    <label for="categorie">Categorie</label>
+    <select id="categorie" required></select>
+
+    <div id="toelichtingWrap" hidden>
+      <label for="toelichting">Toelichting</label>
+      <textarea id="toelichting" rows="2"></textarea>
+    </div>
+
+    <label for="klant">Klant</label>
+    <select id="klant" required></select>
+
+    <button type="submit" id="submitBtn">Versturen</button>
+    <p class="status-msg" id="statusMsg"></p>
+  </form>
+
+  <script src="/config.js"></script>
+  <script src="/app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js");
+    }
+  </script>
+</body>
+</html>
