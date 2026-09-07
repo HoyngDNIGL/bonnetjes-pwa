@@ -1,10 +1,10 @@
 const CACHE_NAME = "bonnetjes-v1";
 const SHELL_FILES = [
-  "/",
-  "/style.css",
-  "/config.js",
-  "/app.js",
-  "/manifest.json",
+  "./",
+  "style.css",
+  "config.js",
+  "app.js",
+  "manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
@@ -23,8 +23,9 @@ self.addEventListener("activate", (event) => {
 });
 
 // Network-first for everything: this app is useless offline anyway (it
-// needs live Graph calls), so the cache only exists to make the app shell
-// load instantly and to satisfy the "installable PWA" requirement.
+// needs to reach Power Automate to actually submit a receipt), so the
+// cache only exists to make the app shell load instantly and to satisfy
+// the "installable PWA" requirement.
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))

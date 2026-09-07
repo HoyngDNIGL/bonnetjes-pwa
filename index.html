@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>DNIGL Bonnetjes</title>
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Bonnetjes">
-  <link rel="apple-touch-icon" href="/icons/icon-180.png">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Bon indienen</h1>
@@ -35,11 +35,11 @@
     <p class="status-msg" id="statusMsg"></p>
   </form>
 
-  <script src="/config.js"></script>
-  <script src="/app.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js");
+      navigator.serviceWorker.register("sw.js");
     }
   </script>
 </body>
