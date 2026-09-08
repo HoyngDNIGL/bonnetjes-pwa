@@ -77,11 +77,22 @@ klantSelect.addEventListener("change", () => {
   klantAndersWrap.hidden = klantSelect.value !== "Anders";
 });
 
+// Normalizes free-typed names so "niels", "NIELS" and "Niels" all become
+// the same string -- otherwise casing typos would create separate
+// "people"/"clients" downstream instead of matching the existing one.
+function titleCase(text) {
+  return text
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 // Returns the select's value, or the free-text "Anders" field's value
-// (trimmed) when "Anders" is chosen -- the flow always receives a plain
-// name/client string either way, no special-casing needed downstream.
+// (title-cased) when "Anders" is chosen -- the flow always receives a
+// plain name/client string either way, no special-casing needed downstream.
 function resolveWithAnders(select, andersInput) {
-  return select.value === "Anders" ? andersInput.value.trim() : select.value;
+  return select.value === "Anders" ? titleCase(andersInput.value) : select.value;
 }
 
 // Resizes to maxDim on the long edge and returns just the base64 payload
