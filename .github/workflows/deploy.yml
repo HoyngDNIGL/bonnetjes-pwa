@@ -32,7 +32,18 @@ jobs:
             echo "FLOW_URL secret is not set -- refusing to deploy with a placeholder flowUrl." >&2
             exit 1
           fi
-          sed -i "s|REPLACE_WITH_FLOW_0_HTTP_TRIGGER_URL|$FLOW_URL|" config.js
+          node -e "
+            const fs = require('fs');
+            const path = 'config.js';
+            const placeholder = 'REPLACE_WITH_FLOW_0_HTTP_TRIGGER_URL';
+            const url = process.env.FLOW_URL;
+            const content = fs.readFileSync(path, 'utf8');
+            if (!content.includes(placeholder)) {
+              console.error('Placeholder not found in config.js -- refusing to deploy.');
+              process.exit(1);
+            }
+            fs.writeFileSync(path, content.split(placeholder).join(url));
+          "
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
