@@ -11,6 +11,10 @@ const photoConfirm = document.getElementById("photoConfirm");
 const photoThumb = document.getElementById("photoThumb");
 const photoFilename = document.getElementById("photoFilename");
 const photoRemoveBtn = document.getElementById("photoRemoveBtn");
+const wieBenJijAndersWrap = document.getElementById("wieBenJijAndersWrap");
+const wieBenJijAndersInput = document.getElementById("wieBenJijAnders");
+const klantAndersWrap = document.getElementById("klantAndersWrap");
+const klantAndersInput = document.getElementById("klantAnders");
 
 let photoPreviewUrl = null;
 
@@ -57,13 +61,28 @@ function fillSelect(select, values) {
   select.innerHTML = values.map((v) => `<option value="${v}">${v}</option>`).join("");
 }
 
-fillSelect(wieBenJijSelect, CONFIG.employees);
+fillSelect(wieBenJijSelect, [...CONFIG.employees, "Anders"]);
 fillSelect(categorieSelect, CONFIG.categories);
-fillSelect(klantSelect, CONFIG.clients);
+fillSelect(klantSelect, [...CONFIG.clients, "Anders"]);
 
 categorieSelect.addEventListener("change", () => {
   toelichtingWrap.hidden = categorieSelect.value !== "Anders";
 });
+
+wieBenJijSelect.addEventListener("change", () => {
+  wieBenJijAndersWrap.hidden = wieBenJijSelect.value !== "Anders";
+});
+
+klantSelect.addEventListener("change", () => {
+  klantAndersWrap.hidden = klantSelect.value !== "Anders";
+});
+
+// Returns the select's value, or the free-text "Anders" field's value
+// (trimmed) when "Anders" is chosen -- the flow always receives a plain
+// name/client string either way, no special-casing needed downstream.
+function resolveWithAnders(select, andersInput) {
+  return select.value === "Anders" ? andersInput.value.trim() : select.value;
+}
 
 // Resizes to maxDim on the long edge and returns just the base64 payload
 // (no "data:image/jpeg;base64," prefix) at the given JPEG quality.
@@ -101,6 +120,17 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
+  const submittedBy = resolveWithAnders(wieBenJijSelect, wieBenJijAndersInput);
+  if (!submittedBy) {
+    setStatus("Vul je naam in.", "error");
+    return;
+  }
+  const klant = resolveWithAnders(klantSelect, klantAndersInput);
+  if (!klant) {
+    setStatus("Vul de klantnaam in.", "error");
+    return;
+  }
+
   submitBtn.disabled = true;
   try {
     setStatus("Foto comprimeren...");
@@ -111,10 +141,10 @@ form.addEventListener("submit", async (e) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        SubmittedBy: wieBenJijSelect.value,
+        SubmittedBy: submittedBy,
         Categorie: categorieSelect.value,
         Toelichting: document.getElementById("toelichting").value,
-        Klant: klantSelect.value,
+        Klant: klant,
         FileName: `${Date.now()}.jpg`,
         PhotoBase64: photoBase64,
       }),
@@ -124,10 +154,14 @@ form.addEventListener("submit", async (e) => {
 
     setStatus("Bon verstuurd, bedankt!", "success");
     form.reset();
-    fillSelect(wieBenJijSelect, CONFIG.employees);
+    fillSelect(wieBenJijSelect, [...CONFIG.employees, "Anders"]);
     fillSelect(categorieSelect, CONFIG.categories);
-    fillSelect(klantSelect, CONFIG.clients);
+    fillSelect(klantSelect, [...CONFIG.clients, "Anders"]);
     toelichtingWrap.hidden = true;
+    wieBenJijAndersWrap.hidden = true;
+    wieBenJijAndersInput.value = "";
+    klantAndersWrap.hidden = true;
+    klantAndersInput.value = "";
     clearPhoto();
   } catch (err) {
     setStatus("Er ging iets mis: " + err.message, "error");
