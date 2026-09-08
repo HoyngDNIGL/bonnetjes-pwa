@@ -10,8 +10,19 @@ const photoHint = document.getElementById("photoHint");
 const photoConfirm = document.getElementById("photoConfirm");
 const photoThumb = document.getElementById("photoThumb");
 const photoFilename = document.getElementById("photoFilename");
+const photoRemoveBtn = document.getElementById("photoRemoveBtn");
 
 let photoPreviewUrl = null;
+
+function clearPhoto() {
+  photoInput.value = "";
+  if (photoPreviewUrl) {
+    URL.revokeObjectURL(photoPreviewUrl);
+    photoPreviewUrl = null;
+  }
+  photoConfirm.hidden = true;
+  photoHint.textContent = "Tik om een foto te maken of te kiezen";
+}
 
 photoInput.addEventListener("change", () => {
   const file = photoInput.files[0];
@@ -30,6 +41,8 @@ photoInput.addEventListener("change", () => {
   photoConfirm.hidden = false;
   photoHint.textContent = "Andere foto kiezen";
 });
+
+photoRemoveBtn.addEventListener("click", clearPhoto);
 
 function setStatus(text, state) {
   statusMsg.textContent = text;
@@ -115,12 +128,7 @@ form.addEventListener("submit", async (e) => {
     fillSelect(categorieSelect, CONFIG.categories);
     fillSelect(klantSelect, CONFIG.clients);
     toelichtingWrap.hidden = true;
-    if (photoPreviewUrl) {
-      URL.revokeObjectURL(photoPreviewUrl);
-      photoPreviewUrl = null;
-    }
-    photoConfirm.hidden = true;
-    photoHint.textContent = "Tik om een foto te maken of te kiezen";
+    clearPhoto();
   } catch (err) {
     setStatus("Er ging iets mis: " + err.message, "error");
   } finally {
