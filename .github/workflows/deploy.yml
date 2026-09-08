@@ -1,0 +1,47 @@
+name: Deploy PWA to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject Flow 0 URL into config.js
+        env:
+          FLOW_URL: ${{ secrets.FLOW_URL }}
+        run: |
+          if [ -z "$FLOW_URL" ]; then
+            echo "FLOW_URL secret is not set -- refusing to deploy with a placeholder flowUrl." >&2
+            exit 1
+          fi
+          sed -i "s|REPLACE_WITH_FLOW_0_HTTP_TRIGGER_URL|$FLOW_URL|" config.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

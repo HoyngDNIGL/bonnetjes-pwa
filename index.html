@@ -11,29 +11,54 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Bon indienen</h1>
+  <div class="page">
+    <header class="topbar">
+      <div class="logo-badge">B</div>
+      <div>
+        <h1>Bon indienen</h1>
+        <p class="subtitle">DNIGL bonnetjes</p>
+      </div>
+    </header>
 
-  <form id="form">
-    <label for="wieBenJij">Wie ben jij</label>
-    <select id="wieBenJij" required></select>
+    <div class="card">
+      <form id="form">
+        <div class="field">
+          <label for="wieBenJij">Wie ben jij</label>
+          <select id="wieBenJij" required></select>
+        </div>
 
-    <label for="photo">Foto van de bon</label>
-    <input type="file" id="photo" accept="image/*" capture="environment" required>
+        <div class="field">
+          <label for="photo">Foto van de bon</label>
+          <div class="photo-input">
+            <input type="file" id="photo" accept="image/*" capture="environment" required>
+            <span class="photo-hint">Tik om een foto te maken of te kiezen</span>
+          </div>
+        </div>
 
-    <label for="categorie">Categorie</label>
-    <select id="categorie" required></select>
+        <div class="field">
+          <label for="categorie">Categorie</label>
+          <select id="categorie" required></select>
+        </div>
 
-    <div id="toelichtingWrap" hidden>
-      <label for="toelichting">Toelichting</label>
-      <textarea id="toelichting" rows="2"></textarea>
+        <div class="field" id="toelichtingWrap" hidden>
+          <label for="toelichting">Toelichting</label>
+          <textarea id="toelichting" rows="2" placeholder="Korte omschrijving"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="klant">Klant</label>
+          <select id="klant" required></select>
+        </div>
+
+        <button type="submit" id="submitBtn">
+          <span class="btn-label">Versturen</span>
+        </button>
+        <p class="status-msg" id="statusMsg" role="status" aria-live="polite"></p>
+      </form>
     </div>
 
-    <label for="klant">Klant</label>
-    <select id="klant" required></select>
-
-    <button type="submit" id="submitBtn">Versturen</button>
-    <p class="status-msg" id="statusMsg"></p>
-  </form>
+    <p class="footer-note">Bewaar je bonnetje totdat je een bevestiging hebt gekregen.</p>
+  </div>
 
   <script src="config.js"></script>
   <script src="app.js"></script>

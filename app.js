@@ -6,8 +6,13 @@ const klantSelect = document.getElementById("klant");
 const submitBtn = document.getElementById("submitBtn");
 const statusMsg = document.getElementById("statusMsg");
 
-function setStatus(text) {
+function setStatus(text, state) {
   statusMsg.textContent = text;
+  if (state) {
+    statusMsg.dataset.state = state;
+  } else {
+    delete statusMsg.dataset.state;
+  }
 }
 
 function fillSelect(select, values) {
@@ -79,14 +84,14 @@ form.addEventListener("submit", async (e) => {
 
     if (!res.ok) throw new Error("serverfout (" + res.status + ")");
 
-    setStatus("Bon verstuurd, bedankt!");
+    setStatus("Bon verstuurd, bedankt!", "success");
     form.reset();
     fillSelect(wieBenJijSelect, CONFIG.employees);
     fillSelect(categorieSelect, CONFIG.categories);
     fillSelect(klantSelect, CONFIG.clients);
     toelichtingWrap.hidden = true;
   } catch (err) {
-    setStatus("Er ging iets mis: " + err.message);
+    setStatus("Er ging iets mis: " + err.message, "error");
   } finally {
     submitBtn.disabled = false;
   }
