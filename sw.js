@@ -27,7 +27,11 @@ self.addEventListener("activate", (event) => {
 // cache only exists to make the app shell load instantly and to satisfy
 // the "installable PWA" requirement.
 self.addEventListener("fetch", (event) => {
+  // "no-store" bypasses the browser's own HTTP cache (Cache-Control:
+  // max-age=600 on GitHub Pages) -- without it, an update can take up to
+  // 10 minutes to actually reach a device even though this handler is
+  // "network-first".
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request, { cache: "no-store" }).catch(() => caches.match(event.request))
   );
 });
