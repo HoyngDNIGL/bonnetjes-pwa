@@ -20,7 +20,7 @@ const CONFIG = {
   // Not a secret in the security sense (it's a soft speed-bump, not real
   // auth -- see app.js), but Max/Edwin should still change this from the
   // default before relying on it.
-  uitbetaalPincode: "2468",
+  uitbetaalPincode: "2019",
 
   // Hardcoded per CLAUDE.md -- editing this list means editing the code
   // and redeploying, which is fine at this scale.
