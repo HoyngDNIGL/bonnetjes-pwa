@@ -150,10 +150,23 @@ const startdatumInput = document.getElementById("startdatum");
 const einddatumInput = document.getElementById("einddatum");
 const medewerkerSelect = document.getElementById("medewerker");
 const overzichtKlantSelect = document.getElementById("overzichtKlant");
+const medewerkerWrap = document.getElementById("medewerkerWrap");
+const overzichtKlantWrap = document.getElementById("overzichtKlantWrap");
+const filterTypeRadios = document.querySelectorAll('input[name="filterType"]');
 const emailInput = document.getElementById("email");
 
-fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
-fillSelect(overzichtKlantSelect, ["Alle klanten", ...CONFIG.clients]);
+fillSelect(medewerkerSelect, CONFIG.employees);
+fillSelect(overzichtKlantSelect, CONFIG.clients);
+
+// Medewerker and Klant are mutually exclusive filters -- only one select
+// shows at a time, so it's never ambiguous which one actually applies.
+function updateFilterTypeUI() {
+  const active = document.querySelector('input[name="filterType"]:checked').value;
+  medewerkerWrap.hidden = active !== "medewerker";
+  overzichtKlantWrap.hidden = active !== "klant";
+}
+filterTypeRadios.forEach((radio) => radio.addEventListener("change", updateFilterTypeUI));
+updateFilterTypeUI();
 
 // Auto-inserts dashes as the user types digits, so the field always reads
 // dd-mm-jjjj regardless of the device's locale settings (unlike a native
@@ -229,6 +242,8 @@ overzichtForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  const filterType = document.querySelector('input[name="filterType"]:checked').value;
+
   overzichtSubmitBtn.disabled = true;
   const stopVoortgang = startOverzichtVoortgang();
   try {
@@ -238,8 +253,8 @@ overzichtForm.addEventListener("submit", async (e) => {
       body: JSON.stringify({
         Startdatum: startdatum.iso,
         Einddatum: einddatum.iso,
-        Medewerker: medewerkerSelect.value === "Alle medewerkers" ? "" : medewerkerSelect.value,
-        Klant: overzichtKlantSelect.value === "Alle klanten" ? "" : overzichtKlantSelect.value,
+        Medewerker: filterType === "medewerker" ? medewerkerSelect.value : "",
+        Klant: filterType === "klant" ? overzichtKlantSelect.value : "",
         Email: emailInput.value,
       }),
     });
@@ -249,8 +264,9 @@ overzichtForm.addEventListener("submit", async (e) => {
     stopVoortgang();
     setOverzichtStatus("Overzicht wordt gegenereerd, je ontvangt zo een e-mail.", "success");
     overzichtForm.reset();
-    fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
-    fillSelect(overzichtKlantSelect, ["Alle klanten", ...CONFIG.clients]);
+    fillSelect(medewerkerSelect, CONFIG.employees);
+    fillSelect(overzichtKlantSelect, CONFIG.clients);
+    updateFilterTypeUI();
   } catch (err) {
     stopVoortgang();
     setOverzichtStatus("Er ging iets mis: " + err.message, "error");

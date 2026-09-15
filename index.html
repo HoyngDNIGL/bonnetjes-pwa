@@ -101,11 +101,23 @@
           </div>
 
           <div class="field">
+            <label>Filteren op</label>
+            <div class="filter-toggle">
+              <input type="radio" name="filterType" id="filterGeen" value="geen" checked>
+              <label for="filterGeen">Geen</label>
+              <input type="radio" name="filterType" id="filterMedewerker" value="medewerker">
+              <label for="filterMedewerker">Medewerker</label>
+              <input type="radio" name="filterType" id="filterKlant" value="klant">
+              <label for="filterKlant">Klant</label>
+            </div>
+          </div>
+
+          <div class="field" id="medewerkerWrap" hidden>
             <label for="medewerker">Medewerker</label>
             <select id="medewerker"></select>
           </div>
 
-          <div class="field">
+          <div class="field" id="overzichtKlantWrap" hidden>
             <label for="overzichtKlant">Klant</label>
             <select id="overzichtKlant"></select>
           </div>
