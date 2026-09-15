@@ -123,6 +123,83 @@ function compressImageToBase64(file, maxDim, quality) {
   });
 }
 
+// --- Tabs ---
+const tabBonBtn = document.getElementById("tabBonBtn");
+const tabOverzichtBtn = document.getElementById("tabOverzichtBtn");
+const tabBonPanel = document.getElementById("tabBon");
+const tabOverzichtPanel = document.getElementById("tabOverzicht");
+
+function selectTab(name) {
+  const isBon = name === "bon";
+  tabBonBtn.classList.toggle("active", isBon);
+  tabOverzichtBtn.classList.toggle("active", !isBon);
+  tabBonBtn.setAttribute("aria-selected", String(isBon));
+  tabOverzichtBtn.setAttribute("aria-selected", String(!isBon));
+  tabBonPanel.hidden = !isBon;
+  tabOverzichtPanel.hidden = isBon;
+}
+
+tabBonBtn.addEventListener("click", () => selectTab("bon"));
+tabOverzichtBtn.addEventListener("click", () => selectTab("overzicht"));
+
+// --- Overzicht opvragen ---
+const overzichtForm = document.getElementById("overzichtForm");
+const overzichtSubmitBtn = document.getElementById("overzichtSubmitBtn");
+const overzichtStatusMsg = document.getElementById("overzichtStatusMsg");
+const startdatumInput = document.getElementById("startdatum");
+const einddatumInput = document.getElementById("einddatum");
+const medewerkerSelect = document.getElementById("medewerker");
+const emailInput = document.getElementById("email");
+
+fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
+
+function setOverzichtStatus(text, state) {
+  overzichtStatusMsg.textContent = text;
+  if (state) {
+    overzichtStatusMsg.dataset.state = state;
+  } else {
+    delete overzichtStatusMsg.dataset.state;
+  }
+}
+
+overzichtForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  if (!CONFIG.overviewFlowUrl) {
+    setOverzichtStatus("Overzicht-flow is nog niet gekoppeld (overviewFlowUrl ontbreekt in config.js).", "error");
+    return;
+  }
+  if (einddatumInput.value < startdatumInput.value) {
+    setOverzichtStatus("Einddatum ligt voor de startdatum.", "error");
+    return;
+  }
+
+  overzichtSubmitBtn.disabled = true;
+  try {
+    setOverzichtStatus("Overzicht wordt opgevraagd...");
+    const res = await fetch(CONFIG.overviewFlowUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        Startdatum: startdatumInput.value,
+        Einddatum: einddatumInput.value,
+        Medewerker: medewerkerSelect.value === "Alle medewerkers" ? "" : medewerkerSelect.value,
+        Email: emailInput.value,
+      }),
+    });
+
+    if (!res.ok) throw new Error("serverfout (" + res.status + ")");
+
+    setOverzichtStatus("Overzicht wordt gegenereerd, je ontvangt zo een e-mail.", "success");
+    overzichtForm.reset();
+    fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
+  } catch (err) {
+    setOverzichtStatus("Er ging iets mis: " + err.message, "error");
+  } finally {
+    overzichtSubmitBtn.disabled = false;
+  }
+});
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = document.getElementById("photo").files[0];

@@ -101,6 +101,45 @@ h1 {
   letter-spacing: 0.01em;
 }
 
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 20px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab-btn.active {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tab-panel {
+  animation: bon-pop 0.15s ease;
+}
+
+.field-hint {
+  margin: -14px 0 22px;
+  font-size: 12px;
+  color: var(--caption);
+}
+
 .card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
   border: 1px solid var(--card-border);
@@ -127,7 +166,9 @@ label {
 
 select,
 textarea,
-input[type="text"] {
+input[type="text"],
+input[type="date"],
+input[type="email"] {
   width: 100%;
   padding: 14px 16px;
   font-size: 15px;
@@ -141,6 +182,10 @@ input[type="text"] {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+input[type="date"] {
+  color-scheme: dark;
+}
+
 select {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'><path d='M4 6l4 4 4-4' stroke='%238a93a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
@@ -151,6 +196,8 @@ select {
 select:focus,
 textarea:focus,
 input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="email"]:focus,
 input[type="file"]:focus + .photo-hint {
   outline: none;
   border-color: rgba(90, 160, 240, 0.5);

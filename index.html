@@ -20,11 +20,17 @@
       <img src="dnigl-logo.png" alt="DNIGL" class="logo-img">
       <div class="logo-divider"></div>
       <div>
-        <h1>Bon indienen</h1>
-        <p class="subtitle">DNIGL bonnetjes</p>
+        <h1>DNIGL Bonnetjes</h1>
+        <p class="subtitle">Indienen &amp; overzicht</p>
       </div>
     </header>
 
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" id="tabBonBtn" role="tab" aria-selected="true">Bon indienen</button>
+      <button type="button" class="tab-btn" id="tabOverzichtBtn" role="tab" aria-selected="false">Overzicht opvragen</button>
+    </div>
+
+    <section id="tabBon" class="tab-panel">
     <div class="card">
       <form id="form">
         <div class="field">
@@ -79,6 +85,40 @@
     </div>
 
     <p class="footer-note">Bewaar je bonnetje totdat je een bevestiging hebt gekregen.</p>
+    </section>
+
+    <section id="tabOverzicht" class="tab-panel" hidden>
+      <div class="card">
+        <form id="overzichtForm">
+          <div class="field">
+            <label for="startdatum">Startdatum</label>
+            <input type="date" id="startdatum" required>
+          </div>
+
+          <div class="field">
+            <label for="einddatum">Einddatum</label>
+            <input type="date" id="einddatum" required>
+          </div>
+
+          <div class="field">
+            <label for="medewerker">Medewerker</label>
+            <select id="medewerker"></select>
+          </div>
+
+          <div class="field">
+            <label for="email">E-mailadres voor het overzicht</label>
+            <input type="email" id="email" placeholder="naam@dnigl.com" required>
+          </div>
+
+          <button type="submit" id="overzichtSubmitBtn">
+            <span class="btn-label">Overzicht opvragen</span>
+          </button>
+          <p class="status-msg" id="overzichtStatusMsg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <p class="footer-note">Het PDF-overzicht wordt naar het opgegeven e-mailadres gestuurd.</p>
+    </section>
   </div>
 
   <script src="config.js"></script>
