@@ -149,9 +149,11 @@ const overzichtStatusMsg = document.getElementById("overzichtStatusMsg");
 const startdatumInput = document.getElementById("startdatum");
 const einddatumInput = document.getElementById("einddatum");
 const medewerkerSelect = document.getElementById("medewerker");
+const overzichtKlantSelect = document.getElementById("overzichtKlant");
 const emailInput = document.getElementById("email");
 
 fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
+fillSelect(overzichtKlantSelect, ["Alle klanten", ...CONFIG.clients]);
 
 // Auto-inserts dashes as the user types digits, so the field always reads
 // dd-mm-jjjj regardless of the device's locale settings (unlike a native
@@ -237,6 +239,7 @@ overzichtForm.addEventListener("submit", async (e) => {
         Startdatum: startdatum.iso,
         Einddatum: einddatum.iso,
         Medewerker: medewerkerSelect.value === "Alle medewerkers" ? "" : medewerkerSelect.value,
+        Klant: overzichtKlantSelect.value === "Alle klanten" ? "" : overzichtKlantSelect.value,
         Email: emailInput.value,
       }),
     });
@@ -247,6 +250,7 @@ overzichtForm.addEventListener("submit", async (e) => {
     setOverzichtStatus("Overzicht wordt gegenereerd, je ontvangt zo een e-mail.", "success");
     overzichtForm.reset();
     fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
+    fillSelect(overzichtKlantSelect, ["Alle klanten", ...CONFIG.clients]);
   } catch (err) {
     stopVoortgang();
     setOverzichtStatus("Er ging iets mis: " + err.message, "error");
