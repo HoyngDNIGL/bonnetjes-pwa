@@ -8,45 +8,63 @@ const statusMsg = document.getElementById("statusMsg");
 const photoInput = document.getElementById("photo");
 const photoHint = document.getElementById("photoHint");
 const photoConfirm = document.getElementById("photoConfirm");
-const photoThumb = document.getElementById("photoThumb");
-const photoFilename = document.getElementById("photoFilename");
-const photoRemoveBtn = document.getElementById("photoRemoveBtn");
 const wieBenJijAndersWrap = document.getElementById("wieBenJijAndersWrap");
 const wieBenJijAndersInput = document.getElementById("wieBenJijAnders");
 const klantAndersWrap = document.getElementById("klantAndersWrap");
 const klantAndersInput = document.getElementById("klantAnders");
 
-let photoPreviewUrl = null;
+// Meerdere foto's tegelijk indienen (bv. een stapel bonnetjes van één
+// reis) -- allemaal met dezelfde Wie ben jij/Categorie/Klant/Toelichting,
+// maar elk als eigen item in Bonnetjes. Los bijgehouden van
+// photoInput.files, want een native FileList kun je niet los bewerken
+// (geen enkel item verwijderen zonder alles opnieuw te kiezen).
+let selectedFiles = [];
+let photoPreviewUrls = [];
 
-function clearPhoto() {
-  photoInput.value = "";
-  if (photoPreviewUrl) {
-    URL.revokeObjectURL(photoPreviewUrl);
-    photoPreviewUrl = null;
+function renderPhotoPreviews() {
+  photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  photoPreviewUrls = [];
+
+  if (!selectedFiles.length) {
+    photoConfirm.hidden = true;
+    photoConfirm.innerHTML = "";
+    photoHint.textContent = "Tik om een of meerdere foto's te maken of te kiezen";
+    return;
   }
-  photoConfirm.hidden = true;
-  photoHint.textContent = "Tik om een foto te maken of te kiezen";
+
+  photoHint.textContent = "Andere foto('s) kiezen";
+  photoConfirm.hidden = false;
+  photoConfirm.innerHTML = selectedFiles.map((file, i) => {
+    const url = URL.createObjectURL(file);
+    photoPreviewUrls.push(url);
+    return `
+      <div class="photo-confirm-item">
+        <img src="${url}" alt="" class="photo-thumb">
+        <span class="photo-check">&#10003;</span>
+        <span class="photo-filename">${escapeHtml(file.name)}</span>
+        <button type="button" class="photo-remove" data-index="${i}" aria-label="Foto verwijderen">&times;</button>
+      </div>
+    `;
+  }).join("");
+}
+
+function clearAllPhotos() {
+  selectedFiles = [];
+  photoInput.value = "";
+  renderPhotoPreviews();
 }
 
 photoInput.addEventListener("change", () => {
-  const file = photoInput.files[0];
-  if (photoPreviewUrl) {
-    URL.revokeObjectURL(photoPreviewUrl);
-    photoPreviewUrl = null;
-  }
-  if (!file) {
-    photoConfirm.hidden = true;
-    photoHint.textContent = "Tik om een foto te maken of te kiezen";
-    return;
-  }
-  photoPreviewUrl = URL.createObjectURL(file);
-  photoThumb.src = photoPreviewUrl;
-  photoFilename.textContent = file.name;
-  photoConfirm.hidden = false;
-  photoHint.textContent = "Andere foto kiezen";
+  selectedFiles = Array.from(photoInput.files);
+  renderPhotoPreviews();
 });
 
-photoRemoveBtn.addEventListener("click", clearPhoto);
+photoConfirm.addEventListener("click", (e) => {
+  const btn = e.target.closest(".photo-remove");
+  if (!btn) return;
+  selectedFiles.splice(parseInt(btn.dataset.index, 10), 1);
+  renderPhotoPreviews();
+});
 
 function setStatus(text, state) {
   statusMsg.textContent = text;
@@ -415,9 +433,8 @@ uitbetaalSubmitBtn.addEventListener("click", async () => {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const file = document.getElementById("photo").files[0];
-  if (!file) {
-    setStatus("Kies eerst een foto.");
+  if (!selectedFiles.length) {
+    setStatus("Kies eerst minstens één foto.");
     return;
   }
 
@@ -433,39 +450,57 @@ form.addEventListener("submit", async (e) => {
   }
 
   submitBtn.disabled = true;
+  const teVersturen = selectedFiles;
+  const opnieuwProberen = [];
+  let gelukt = 0;
+
   try {
-    setStatus("Foto comprimeren...");
-    const photoBase64 = await compressImageToBase64(file, 1600, 0.7);
+    for (let i = 0; i < teVersturen.length; i++) {
+      const file = teVersturen[i];
+      setStatus(teVersturen.length > 1
+        ? `Bonnetje ${i + 1} van ${teVersturen.length} versturen...`
+        : "Bezig met versturen...");
+      try {
+        const photoBase64 = await compressImageToBase64(file, 1600, 0.7);
+        const res = await fetch(CONFIG.flowUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            SubmittedBy: submittedBy,
+            Categorie: categorieSelect.value,
+            Toelichting: document.getElementById("toelichting").value,
+            Klant: klant,
+            FileName: `${Date.now()}_${i}.jpg`,
+            PhotoBase64: photoBase64,
+          }),
+        });
+        if (!res.ok) throw new Error("serverfout (" + res.status + ")");
+        gelukt++;
+      } catch (err) {
+        // Foto blijft in de lijst staan zodat je 'm zo opnieuw kan
+        // proberen, zonder de al gelukte foto's nogmaals te versturen.
+        opnieuwProberen.push(file);
+      }
+    }
 
-    setStatus("Bezig met versturen...");
-    const res = await fetch(CONFIG.flowUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        SubmittedBy: submittedBy,
-        Categorie: categorieSelect.value,
-        Toelichting: document.getElementById("toelichting").value,
-        Klant: klant,
-        FileName: `${Date.now()}.jpg`,
-        PhotoBase64: photoBase64,
-      }),
-    });
+    selectedFiles = opnieuwProberen;
+    renderPhotoPreviews();
 
-    if (!res.ok) throw new Error("serverfout (" + res.status + ")");
-
-    setStatus("Bon verstuurd, bedankt!", "success");
-    form.reset();
-    fillSelect(wieBenJijSelect, [...CONFIG.employees, "Anders"]);
-    fillSelect(categorieSelect, CONFIG.categories);
-    fillSelect(klantSelect, [...CONFIG.clients, "Anders"]);
-    toelichtingWrap.hidden = true;
-    wieBenJijAndersWrap.hidden = true;
-    wieBenJijAndersInput.value = "";
-    klantAndersWrap.hidden = true;
-    klantAndersInput.value = "";
-    clearPhoto();
-  } catch (err) {
-    setStatus("Er ging iets mis: " + err.message, "error");
+    if (!opnieuwProberen.length) {
+      setStatus(gelukt === 1 ? "Bon verstuurd, bedankt!" : `${gelukt} bonnen verstuurd, bedankt!`, "success");
+      form.reset();
+      fillSelect(wieBenJijSelect, [...CONFIG.employees, "Anders"]);
+      fillSelect(categorieSelect, CONFIG.categories);
+      fillSelect(klantSelect, [...CONFIG.clients, "Anders"]);
+      toelichtingWrap.hidden = true;
+      wieBenJijAndersWrap.hidden = true;
+      wieBenJijAndersInput.value = "";
+      klantAndersWrap.hidden = true;
+      klantAndersInput.value = "";
+      clearAllPhotos();
+    } else {
+      setStatus(`${gelukt} van ${teVersturen.length} bonnen verstuurd, ${opnieuwProberen.length} mislukt -- probeer de overgebleven foto('s) opnieuw.`, "error");
+    }
   } finally {
     submitBtn.disabled = false;
   }

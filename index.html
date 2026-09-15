@@ -45,17 +45,12 @@
         </div>
 
         <div class="field">
-          <label for="photo">Foto van de bon</label>
+          <label for="photo">Foto('s) van de bon</label>
           <div class="photo-input">
-            <input type="file" id="photo" accept="image/*" required>
-            <span class="photo-hint" id="photoHint">Tik om een foto te maken of te kiezen</span>
+            <input type="file" id="photo" accept="image/*" multiple required>
+            <span class="photo-hint" id="photoHint">Tik om een of meerdere foto's te maken of te kiezen</span>
           </div>
-          <div class="photo-confirm" id="photoConfirm" hidden>
-            <img id="photoThumb" alt="" class="photo-thumb">
-            <span class="photo-check">&#10003;</span>
-            <span class="photo-filename" id="photoFilename"></span>
-            <button type="button" id="photoRemoveBtn" class="photo-remove" aria-label="Foto verwijderen">&times;</button>
-          </div>
+          <div class="photo-confirm-list" id="photoConfirm" hidden></div>
         </div>
 
         <div class="field">

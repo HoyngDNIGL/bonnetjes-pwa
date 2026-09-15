@@ -400,11 +400,17 @@ input[type="text"] {
   color: #b7c0cf;
 }
 
-.photo-confirm {
+.photo-confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.photo-confirm-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
   padding: 10px 14px;
   border-radius: var(--radius);
   background: var(--success-bg);
