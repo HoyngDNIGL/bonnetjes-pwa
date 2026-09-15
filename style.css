@@ -167,7 +167,6 @@ label {
 select,
 textarea,
 input[type="text"],
-input[type="date"],
 input[type="email"] {
   width: 100%;
   padding: 14px 16px;
@@ -182,10 +181,6 @@ input[type="email"] {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-input[type="date"] {
-  color-scheme: dark;
-}
-
 select {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'><path d='M4 6l4 4 4-4' stroke='%238a93a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
@@ -196,7 +191,6 @@ select {
 select:focus,
 textarea:focus,
 input[type="text"]:focus,
-input[type="date"]:focus,
 input[type="email"]:focus,
 input[type="file"]:focus + .photo-hint {
   outline: none;

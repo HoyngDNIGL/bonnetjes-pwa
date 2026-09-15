@@ -153,6 +153,33 @@ const emailInput = document.getElementById("email");
 
 fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
 
+// Auto-inserts dashes as the user types digits, so the field always reads
+// dd-mm-jjjj regardless of the device's locale settings (unlike a native
+// <input type="date">, whose displayed/typed format follows the OS
+// language and can silently swap day/month).
+function formatDatumInput(e) {
+  const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+  let out = digits;
+  if (digits.length > 4) out = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+  else if (digits.length > 2) out = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  e.target.value = out;
+}
+startdatumInput.addEventListener("input", formatDatumInput);
+einddatumInput.addEventListener("input", formatDatumInput);
+
+// Parses a strict dd-mm-jjjj string, rejecting both malformed input and
+// calendar-invalid dates (e.g. 31-02-2026) -- returns null for either.
+function parseDutchDate(value) {
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(value.trim());
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const year = parseInt(m[3], 10);
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return { iso: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` };
+}
+
 function setOverzichtStatus(text, state) {
   overzichtStatusMsg.textContent = text;
   if (state) {
@@ -169,7 +196,13 @@ overzichtForm.addEventListener("submit", async (e) => {
     setOverzichtStatus("Overzicht-flow is nog niet gekoppeld (overviewFlowUrl ontbreekt in config.js).", "error");
     return;
   }
-  if (einddatumInput.value < startdatumInput.value) {
+  const startdatum = parseDutchDate(startdatumInput.value);
+  const einddatum = parseDutchDate(einddatumInput.value);
+  if (!startdatum || !einddatum) {
+    setOverzichtStatus("Vul een geldige datum in (dd-mm-jjjj).", "error");
+    return;
+  }
+  if (einddatum.iso < startdatum.iso) {
     setOverzichtStatus("Einddatum ligt voor de startdatum.", "error");
     return;
   }
@@ -181,8 +214,8 @@ overzichtForm.addEventListener("submit", async (e) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        Startdatum: startdatumInput.value,
-        Einddatum: einddatumInput.value,
+        Startdatum: startdatum.iso,
+        Einddatum: einddatum.iso,
         Medewerker: medewerkerSelect.value === "Alle medewerkers" ? "" : medewerkerSelect.value,
         Email: emailInput.value,
       }),
