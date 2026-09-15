@@ -287,8 +287,7 @@ overzichtForm.addEventListener("submit", async (e) => {
 // broncode, net als de rest van de configuratie. Voor dit team en dit
 // risiconiveau (geen login op de hele app, zie config.js) is dat bewust
 // voldoende.
-const pincodeInput = document.getElementById("pincode");
-const ontgrendelBtn = document.getElementById("ontgrendelBtn");
+const pinCijfers = Array.from(document.querySelectorAll(".pin-cijfer"));
 const pincodeWrap = document.getElementById("pincodeWrap");
 const pincodeStatusMsg = document.getElementById("pincodeStatusMsg");
 const uitbetaalActieWrap = document.getElementById("uitbetaalActieWrap");
@@ -339,15 +338,44 @@ deselecteerAllesBtn.addEventListener("click", () => {
   bonnetjesLijst.querySelectorAll(".bon-check").forEach((cb) => { cb.checked = false; });
 });
 
-ontgrendelBtn.addEventListener("click", () => {
-  if (pincodeInput.value === CONFIG.uitbetaalPincode) {
+// Individuele pincode-vakjes die vanzelf doorschakelen en automatisch
+// controleren zodra alle vakjes gevuld zijn (zoals een telefoon-pincode),
+// i.p.v. één tekstveld met een aparte "Ontgrendelen"-knop.
+function checkPincode() {
+  const waarde = pinCijfers.map((el) => el.value).join("");
+  if (waarde.length < pinCijfers.length) return;
+
+  if (waarde === CONFIG.uitbetaalPincode) {
     pincodeWrap.hidden = true;
     uitbetaalActieWrap.hidden = false;
     laadBonnetjesLijst();
   } else {
     pincodeStatusMsg.textContent = "Onjuiste pincode.";
     pincodeStatusMsg.dataset.state = "error";
+    pinCijfers.forEach((el) => {
+      el.value = "";
+      el.dataset.error = "true";
+    });
+    pinCijfers[0].focus();
+    setTimeout(() => pinCijfers.forEach((el) => delete el.dataset.error), 300);
   }
+}
+
+pinCijfers.forEach((el, i) => {
+  el.addEventListener("input", () => {
+    el.value = el.value.replace(/\D/g, "").slice(0, 1);
+    delete pincodeStatusMsg.dataset.state;
+    pincodeStatusMsg.textContent = "";
+    if (el.value && i < pinCijfers.length - 1) {
+      pinCijfers[i + 1].focus();
+    }
+    checkPincode();
+  });
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Backspace" && !el.value && i > 0) {
+      pinCijfers[i - 1].focus();
+    }
+  });
 });
 
 uitbetaalSubmitBtn.addEventListener("click", async () => {

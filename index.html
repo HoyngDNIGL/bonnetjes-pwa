@@ -141,13 +141,13 @@
     <section id="tabUitbetaal" class="tab-panel" hidden>
       <div class="card">
         <div id="pincodeWrap">
-          <div class="field">
-            <label for="pincode">Pincode</label>
-            <input type="password" id="pincode" inputmode="numeric" placeholder="••••">
+          <label class="pin-label">Pincode</label>
+          <div class="pin-invoer" id="pinInvoer">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-cijfer" autocomplete="off">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-cijfer" autocomplete="off">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-cijfer" autocomplete="off">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-cijfer" autocomplete="off">
           </div>
-          <button type="button" id="ontgrendelBtn">
-            <span class="btn-label">Ontgrendelen</span>
-          </button>
           <p class="status-msg" id="pincodeStatusMsg" role="status" aria-live="polite"></p>
         </div>
 
