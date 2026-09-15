@@ -189,19 +189,24 @@ function setOverzichtStatus(text, state) {
   }
 }
 
-// Cycles through a few plausible-sounding stages while the request is in
-// flight -- there's no real progress info coming back from the flow (one
-// HTTP call, one response), this is purely so the wait doesn't look frozen.
-// Returns a function that stops the cycle.
+// Steps through a few plausible-sounding stages once, then holds on the
+// last one until the request actually finishes -- there's no real
+// progress info coming back from the flow (one HTTP call, one response),
+// this is purely so the wait doesn't look frozen. Doesn't loop back to
+// the start. Returns a function that stops it.
 function startOverzichtVoortgang() {
   const stappen = ["Bonnetjes zoeken...", "Overzicht maken...", "Mail versturen..."];
   let i = 0;
+  let timer = null;
   setOverzichtStatus(stappen[0]);
-  const timer = setInterval(() => {
-    i = (i + 1) % stappen.length;
+  function volgende() {
+    i++;
+    if (i >= stappen.length) return;
     setOverzichtStatus(stappen[i]);
-  }, 1800);
-  return () => clearInterval(timer);
+    timer = setTimeout(volgende, 2500);
+  }
+  timer = setTimeout(volgende, 2500);
+  return () => clearTimeout(timer);
 }
 
 overzichtForm.addEventListener("submit", async (e) => {
