@@ -189,6 +189,21 @@ function setOverzichtStatus(text, state) {
   }
 }
 
+// Cycles through a few plausible-sounding stages while the request is in
+// flight -- there's no real progress info coming back from the flow (one
+// HTTP call, one response), this is purely so the wait doesn't look frozen.
+// Returns a function that stops the cycle.
+function startOverzichtVoortgang() {
+  const stappen = ["Bonnetjes zoeken...", "Overzicht maken...", "Mail versturen..."];
+  let i = 0;
+  setOverzichtStatus(stappen[0]);
+  const timer = setInterval(() => {
+    i = (i + 1) % stappen.length;
+    setOverzichtStatus(stappen[i]);
+  }, 1800);
+  return () => clearInterval(timer);
+}
+
 overzichtForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -208,8 +223,8 @@ overzichtForm.addEventListener("submit", async (e) => {
   }
 
   overzichtSubmitBtn.disabled = true;
+  const stopVoortgang = startOverzichtVoortgang();
   try {
-    setOverzichtStatus("Overzicht wordt opgevraagd...");
     const res = await fetch(CONFIG.overviewFlowUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -223,10 +238,12 @@ overzichtForm.addEventListener("submit", async (e) => {
 
     if (!res.ok) throw new Error("serverfout (" + res.status + ")");
 
+    stopVoortgang();
     setOverzichtStatus("Overzicht wordt gegenereerd, je ontvangt zo een e-mail.", "success");
     overzichtForm.reset();
     fillSelect(medewerkerSelect, ["Alle medewerkers", ...CONFIG.employees]);
   } catch (err) {
+    stopVoortgang();
     setOverzichtStatus("Er ging iets mis: " + err.message, "error");
   } finally {
     overzichtSubmitBtn.disabled = false;
