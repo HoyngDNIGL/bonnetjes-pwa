@@ -66,6 +66,27 @@ jobs:
             fs.writeFileSync(path, content.split(placeholder).join(url));
           "
 
+      - name: Inject Flow 4 URL into config.js
+        env:
+          FLOW4_URL: ${{ secrets.FLOW4_URL }}
+        run: |
+          if [ -z "$FLOW4_URL" ]; then
+            echo "FLOW4_URL secret is not set -- refusing to deploy with a placeholder flow4Url." >&2
+            exit 1
+          fi
+          node -e "
+            const fs = require('fs');
+            const path = 'config.js';
+            const placeholder = 'REPLACE_WITH_FLOW_4_HTTP_TRIGGER_URL';
+            const url = process.env.FLOW4_URL;
+            const content = fs.readFileSync(path, 'utf8');
+            if (!content.includes(placeholder)) {
+              console.error('Placeholder not found in config.js -- refusing to deploy.');
+              process.exit(1);
+            }
+            fs.writeFileSync(path, content.split(placeholder).join(url));
+          "
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

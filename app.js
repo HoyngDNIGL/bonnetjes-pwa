@@ -124,23 +124,29 @@ function compressImageToBase64(file, maxDim, quality) {
 }
 
 // --- Tabs ---
-const tabBonBtn = document.getElementById("tabBonBtn");
-const tabOverzichtBtn = document.getElementById("tabOverzichtBtn");
-const tabBonPanel = document.getElementById("tabBon");
-const tabOverzichtPanel = document.getElementById("tabOverzicht");
+const tabButtons = {
+  bon: document.getElementById("tabBonBtn"),
+  overzicht: document.getElementById("tabOverzichtBtn"),
+  uitbetaal: document.getElementById("tabUitbetaalBtn"),
+};
+const tabPanels = {
+  bon: document.getElementById("tabBon"),
+  overzicht: document.getElementById("tabOverzicht"),
+  uitbetaal: document.getElementById("tabUitbetaal"),
+};
 
 function selectTab(name) {
-  const isBon = name === "bon";
-  tabBonBtn.classList.toggle("active", isBon);
-  tabOverzichtBtn.classList.toggle("active", !isBon);
-  tabBonBtn.setAttribute("aria-selected", String(isBon));
-  tabOverzichtBtn.setAttribute("aria-selected", String(!isBon));
-  tabBonPanel.hidden = !isBon;
-  tabOverzichtPanel.hidden = isBon;
+  for (const key of Object.keys(tabButtons)) {
+    const active = key === name;
+    tabButtons[key].classList.toggle("active", active);
+    tabButtons[key].setAttribute("aria-selected", String(active));
+    tabPanels[key].hidden = !active;
+  }
 }
 
-tabBonBtn.addEventListener("click", () => selectTab("bon"));
-tabOverzichtBtn.addEventListener("click", () => selectTab("overzicht"));
+for (const key of Object.keys(tabButtons)) {
+  tabButtons[key].addEventListener("click", () => selectTab(key));
+}
 
 // --- Overzicht opvragen ---
 const overzichtForm = document.getElementById("overzichtForm");
@@ -272,6 +278,53 @@ overzichtForm.addEventListener("submit", async (e) => {
     setOverzichtStatus("Er ging iets mis: " + err.message, "error");
   } finally {
     overzichtSubmitBtn.disabled = false;
+  }
+});
+
+// --- Uitbetaalronde (Flow 4) ---
+// Pincode is puur een drempel tegen per-ongeluk-klikken door de 3
+// medewerkers, geen echte beveiliging -- staat gewoon leesbaar in deze
+// broncode, net als de rest van de configuratie. Voor dit team en dit
+// risiconiveau (geen login op de hele app, zie config.js) is dat bewust
+// voldoende.
+const pincodeInput = document.getElementById("pincode");
+const ontgrendelBtn = document.getElementById("ontgrendelBtn");
+const pincodeWrap = document.getElementById("pincodeWrap");
+const pincodeStatusMsg = document.getElementById("pincodeStatusMsg");
+const uitbetaalActieWrap = document.getElementById("uitbetaalActieWrap");
+const uitbetaalSubmitBtn = document.getElementById("uitbetaalSubmitBtn");
+const uitbetaalStatusMsg = document.getElementById("uitbetaalStatusMsg");
+
+ontgrendelBtn.addEventListener("click", () => {
+  if (pincodeInput.value === CONFIG.uitbetaalPincode) {
+    pincodeWrap.hidden = true;
+    uitbetaalActieWrap.hidden = false;
+  } else {
+    pincodeStatusMsg.textContent = "Onjuiste pincode.";
+    pincodeStatusMsg.dataset.state = "error";
+  }
+});
+
+uitbetaalSubmitBtn.addEventListener("click", async () => {
+  if (!CONFIG.flow4Url) {
+    uitbetaalStatusMsg.textContent = "Uitbetaalronde-flow is nog niet gekoppeld (flow4Url ontbreekt in config.js).";
+    uitbetaalStatusMsg.dataset.state = "error";
+    return;
+  }
+
+  uitbetaalSubmitBtn.disabled = true;
+  uitbetaalStatusMsg.textContent = "Uitbetaalronde wordt gestart...";
+  delete uitbetaalStatusMsg.dataset.state;
+  try {
+    const res = await fetch(CONFIG.flow4Url, { method: "POST" });
+    if (!res.ok) throw new Error("serverfout (" + res.status + ")");
+    uitbetaalStatusMsg.textContent = "Uitbetaalronde gestart -- je ontvangt zo het overzicht per e-mail.";
+    uitbetaalStatusMsg.dataset.state = "success";
+  } catch (err) {
+    uitbetaalStatusMsg.textContent = "Er ging iets mis: " + err.message;
+    uitbetaalStatusMsg.dataset.state = "error";
+  } finally {
+    uitbetaalSubmitBtn.disabled = false;
   }
 });
 

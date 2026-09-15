@@ -27,7 +27,8 @@
 
     <div class="tabs" role="tablist">
       <button type="button" class="tab-btn active" id="tabBonBtn" role="tab" aria-selected="true">Bon indienen</button>
-      <button type="button" class="tab-btn" id="tabOverzichtBtn" role="tab" aria-selected="false">Overzicht opvragen</button>
+      <button type="button" class="tab-btn" id="tabOverzichtBtn" role="tab" aria-selected="false">Overzicht</button>
+      <button type="button" class="tab-btn" id="tabUitbetaalBtn" role="tab" aria-selected="false">Uitbetalen</button>
     </div>
 
     <section id="tabBon" class="tab-panel">
@@ -135,6 +136,31 @@
       </div>
 
       <p class="footer-note">Het PDF-overzicht wordt naar het opgegeven e-mailadres gestuurd.</p>
+    </section>
+
+    <section id="tabUitbetaal" class="tab-panel" hidden>
+      <div class="card">
+        <div id="pincodeWrap">
+          <div class="field">
+            <label for="pincode">Pincode</label>
+            <input type="password" id="pincode" inputmode="numeric" placeholder="••••">
+          </div>
+          <button type="button" id="ontgrendelBtn">
+            <span class="btn-label">Ontgrendelen</span>
+          </button>
+          <p class="status-msg" id="pincodeStatusMsg" role="status" aria-live="polite"></p>
+        </div>
+
+        <div id="uitbetaalActieWrap" hidden>
+          <p class="field-hint" style="margin-top:0;">Dit zet alle openstaande bonnetjes op Betaald en stuurt het uitbetaaloverzicht per e-mail.</p>
+          <button type="button" id="uitbetaalSubmitBtn">
+            <span class="btn-label">Start uitbetaalronde</span>
+          </button>
+          <p class="status-msg" id="uitbetaalStatusMsg" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <p class="footer-note">Alleen voor de eigenaar — dit zet bonnetjes definitief op Betaald.</p>
     </section>
   </div>
 
