@@ -17,6 +17,11 @@ const CONFIG = {
   // commit the real URL here.
   flow4Url: "REPLACE_WITH_FLOW_4_HTTP_TRIGGER_URL",
 
+  // Flow 6 ("Openstaande bonnetjes ophalen") HTTP-trigger URL. Same deal:
+  // real value injected at deploy time from the LIST_FLOW_URL repo secret
+  // -- never commit the real URL here.
+  listFlowUrl: "REPLACE_WITH_FLOW_6_HTTP_TRIGGER_URL",
+
   // Not a secret in the security sense (it's a soft speed-bump, not real
   // auth -- see app.js), but Max/Edwin should still change this from the
   // default before relying on it.

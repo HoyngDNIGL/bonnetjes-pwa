@@ -294,11 +294,56 @@ const pincodeStatusMsg = document.getElementById("pincodeStatusMsg");
 const uitbetaalActieWrap = document.getElementById("uitbetaalActieWrap");
 const uitbetaalSubmitBtn = document.getElementById("uitbetaalSubmitBtn");
 const uitbetaalStatusMsg = document.getElementById("uitbetaalStatusMsg");
+const bonnetjesLijst = document.getElementById("bonnetjesLijst");
+const selecteerAllesBtn = document.getElementById("selecteerAllesBtn");
+const deselecteerAllesBtn = document.getElementById("deselecteerAllesBtn");
+
+function escapeHtml(text) {
+  return String(text ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+async function laadBonnetjesLijst() {
+  bonnetjesLijst.innerHTML = '<p class="bon-lijst-empty">Bonnetjes laden...</p>';
+  if (!CONFIG.listFlowUrl) {
+    bonnetjesLijst.innerHTML = '<p class="bon-lijst-empty">listFlowUrl ontbreekt in config.js.</p>';
+    return;
+  }
+  try {
+    const res = await fetch(CONFIG.listFlowUrl, { method: "POST" });
+    if (!res.ok) throw new Error("serverfout (" + res.status + ")");
+    const items = await res.json();
+    if (!items.length) {
+      bonnetjesLijst.innerHTML = '<p class="bon-lijst-empty">Geen openstaande bonnetjes gevonden.</p>';
+      return;
+    }
+    bonnetjesLijst.innerHTML = items.map((item) => `
+      <label class="bon-checkbox">
+        <input type="checkbox" class="bon-check" value="${item.ID}" checked>
+        <span>
+          <div class="bon-checkbox-main">${escapeHtml(item.Vendor)} &middot; &euro; ${escapeHtml(item.AmountEUR)}</div>
+          <div class="bon-checkbox-sub">${escapeHtml(item.ReceiptDate)} &middot; ${escapeHtml(item.SubmittedBy || "onbekend")}</div>
+        </span>
+      </label>
+    `).join("");
+  } catch (err) {
+    bonnetjesLijst.innerHTML = `<p class="bon-lijst-empty">Kon de lijst niet laden: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+selecteerAllesBtn.addEventListener("click", () => {
+  bonnetjesLijst.querySelectorAll(".bon-check").forEach((cb) => { cb.checked = true; });
+});
+deselecteerAllesBtn.addEventListener("click", () => {
+  bonnetjesLijst.querySelectorAll(".bon-check").forEach((cb) => { cb.checked = false; });
+});
 
 ontgrendelBtn.addEventListener("click", () => {
   if (pincodeInput.value === CONFIG.uitbetaalPincode) {
     pincodeWrap.hidden = true;
     uitbetaalActieWrap.hidden = false;
+    laadBonnetjesLijst();
   } else {
     pincodeStatusMsg.textContent = "Onjuiste pincode.";
     pincodeStatusMsg.dataset.state = "error";
@@ -312,11 +357,23 @@ uitbetaalSubmitBtn.addEventListener("click", async () => {
     return;
   }
 
+  const geselecteerdeIds = Array.from(bonnetjesLijst.querySelectorAll(".bon-check:checked"))
+    .map((cb) => parseInt(cb.value, 10));
+  if (!geselecteerdeIds.length) {
+    uitbetaalStatusMsg.textContent = "Selecteer eerst minstens één bonnetje.";
+    uitbetaalStatusMsg.dataset.state = "error";
+    return;
+  }
+
   uitbetaalSubmitBtn.disabled = true;
   uitbetaalStatusMsg.textContent = "Uitbetaalronde wordt gestart...";
   delete uitbetaalStatusMsg.dataset.state;
   try {
-    const res = await fetch(CONFIG.flow4Url, { method: "POST" });
+    const res = await fetch(CONFIG.flow4Url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ItemIds: geselecteerdeIds }),
+    });
     if (!res.ok) throw new Error("serverfout (" + res.status + ")");
     uitbetaalStatusMsg.textContent = "Uitbetaalronde gestart -- je ontvangt zo het overzicht per e-mail.";
     uitbetaalStatusMsg.dataset.state = "success";

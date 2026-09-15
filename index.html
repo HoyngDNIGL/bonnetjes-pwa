@@ -152,7 +152,12 @@
         </div>
 
         <div id="uitbetaalActieWrap" hidden>
-          <p class="field-hint" style="margin-top:0;">Dit zet alle openstaande bonnetjes op Betaald en stuurt het uitbetaaloverzicht per e-mail.</p>
+          <p class="field-hint" style="margin-top:0;">Selecteer welke bonnetjes meegaan in deze uitbetaalronde. De niet-aangevinkte bonnen blijven gewoon op Processed staan voor een volgende keer.</p>
+          <div class="bon-lijst-acties">
+            <button type="button" id="selecteerAllesBtn" class="link-btn">Alles selecteren</button>
+            <button type="button" id="deselecteerAllesBtn" class="link-btn">Niets selecteren</button>
+          </div>
+          <div id="bonnetjesLijst" class="bon-lijst"></div>
           <button type="button" id="uitbetaalSubmitBtn">
             <span class="btn-label">Start uitbetaalronde</span>
           </button>

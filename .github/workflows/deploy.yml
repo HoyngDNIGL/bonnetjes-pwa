@@ -87,6 +87,27 @@ jobs:
             fs.writeFileSync(path, content.split(placeholder).join(url));
           "
 
+      - name: Inject Flow 6 URL into config.js
+        env:
+          LIST_FLOW_URL: ${{ secrets.LIST_FLOW_URL }}
+        run: |
+          if [ -z "$LIST_FLOW_URL" ]; then
+            echo "LIST_FLOW_URL secret is not set -- refusing to deploy with a placeholder listFlowUrl." >&2
+            exit 1
+          fi
+          node -e "
+            const fs = require('fs');
+            const path = 'config.js';
+            const placeholder = 'REPLACE_WITH_FLOW_6_HTTP_TRIGGER_URL';
+            const url = process.env.LIST_FLOW_URL;
+            const content = fs.readFileSync(path, 'utf8');
+            if (!content.includes(placeholder)) {
+              console.error('Placeholder not found in config.js -- refusing to deploy.');
+              process.exit(1);
+            }
+            fs.writeFileSync(path, content.split(placeholder).join(url));
+          "
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
