@@ -32,4 +32,14 @@ const CONFIG = {
   employees: ["Edwin", "Niels", "Stijn"],
   categories: ["Hotel", "Taxi", "Vlucht", "Eten", "Anders"],
   clients: ["Arpa", "Trespa", "Zelf"],
+
+  // E-mailadres per vaste medewerker, voor SubmittedByEmail (routering van de
+  // "Needs EUR amount"-notificatie naar de daadwerkelijke indiener i.p.v. een
+  // hardcoded adres). Bij "Anders" wordt het e-mailadres in het formulier
+  // zelf ingevuld, dus die staat hier niet.
+  employeeEmails: {
+    Edwin: "evlieg@dnigl.com",
+    Niels: "nverweij@dnigl.com",
+    Stijn: "svanbeers@dnigl.com",
+  },
 };

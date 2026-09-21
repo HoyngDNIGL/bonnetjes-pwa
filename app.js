@@ -10,6 +10,7 @@ const photoHint = document.getElementById("photoHint");
 const photoConfirm = document.getElementById("photoConfirm");
 const wieBenJijAndersWrap = document.getElementById("wieBenJijAndersWrap");
 const wieBenJijAndersInput = document.getElementById("wieBenJijAnders");
+const wieBenJijAndersEmailInput = document.getElementById("wieBenJijAndersEmail");
 const klantAndersWrap = document.getElementById("klantAndersWrap");
 const klantAndersInput = document.getElementById("klantAnders");
 
@@ -111,6 +112,14 @@ function titleCase(text) {
 // plain name/client string either way, no special-casing needed downstream.
 function resolveWithAnders(select, andersInput) {
   return select.value === "Anders" ? titleCase(andersInput.value) : select.value;
+}
+
+// E-mailadres voor de "Needs EUR amount"-notificatie: bij een vaste
+// medewerker uit CONFIG.employeeEmails, bij "Anders" het handmatig
+// ingevulde adres.
+function resolveSubmittedByEmail(select, andersEmailInput) {
+  if (select.value === "Anders") return andersEmailInput.value.trim();
+  return CONFIG.employeeEmails[select.value] || "";
 }
 
 // Resizes to maxDim on the long edge and returns just the base64 payload
@@ -443,6 +452,11 @@ form.addEventListener("submit", async (e) => {
     setStatus("Vul je naam in.", "error");
     return;
   }
+  const submittedByEmail = resolveSubmittedByEmail(wieBenJijSelect, wieBenJijAndersEmailInput);
+  if (!submittedByEmail || !submittedByEmail.includes("@")) {
+    setStatus("Vul een geldig e-mailadres in.", "error");
+    return;
+  }
   const klant = resolveWithAnders(klantSelect, klantAndersInput);
   if (!klant) {
     setStatus("Vul de klantnaam in.", "error");
@@ -467,6 +481,7 @@ form.addEventListener("submit", async (e) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             SubmittedBy: submittedBy,
+            SubmittedByEmail: submittedByEmail,
             Categorie: categorieSelect.value,
             Toelichting: document.getElementById("toelichting").value,
             Klant: klant,
@@ -495,6 +510,7 @@ form.addEventListener("submit", async (e) => {
       toelichtingWrap.hidden = true;
       wieBenJijAndersWrap.hidden = true;
       wieBenJijAndersInput.value = "";
+      wieBenJijAndersEmailInput.value = "";
       klantAndersWrap.hidden = true;
       klantAndersInput.value = "";
       clearAllPhotos();
