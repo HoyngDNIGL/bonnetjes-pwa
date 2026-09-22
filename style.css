@@ -755,10 +755,15 @@ button#uitbetaalSubmitBtn:disabled {
 
 .confirm-thumb {
   width: 100%;
-  max-height: 200px;
-  object-fit: cover;
+  max-height: 220px;
+  object-fit: contain;
   border-radius: var(--radius);
   background: var(--paper-2);
+  /* "contain" i.p.v. "cover": laat de hele foto zien, ongeacht de
+     verhouding (lange smalle bon of brede factuur) -- geen bijgesneden/
+     ingezoomde weergave meer. De wizard-kaart zelf blijft scrollbaar
+     (zie .wizard-card, max-height: 92vh) dus zelfs bij een erg lange
+     foto blijven de velden en knoppen eronder gewoon bereikbaar. */
 }
 
 .confirm-amount-row {
