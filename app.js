@@ -295,6 +295,19 @@ const confirmKlant = document.getElementById("confirmKlant");
 const confirmMedewerker = document.getElementById("confirmMedewerker");
 const confirmRetryBtn = document.getElementById("confirmRetryBtn");
 const confirmSubmitBtn = document.getElementById("confirmSubmitBtn");
+const wizardCancelBtn = document.getElementById("wizardCancelBtn");
+
+// Eén gedeelde annuleer-knop voor de hele wizard (crop- én
+// controlestap): wie 'm indrukt breekt het hele indienproces af, niet
+// alleen de huidige stap. Elke stap registreert hier zijn eigen
+// "annuleer dit"-callback zodat de knop altijd de actieve stap netjes
+// kan afronden vóórdat de wizard zich sluit.
+let wizardCancelHandler = null;
+wizardCancelBtn.addEventListener("click", () => {
+  if (!wizardCancelHandler) return;
+  if (!confirm("Weet je zeker dat je wilt annuleren? Nog niet verstuurde foto's worden niet opgeslagen.")) return;
+  wizardCancelHandler();
+});
 
 function showWizardStep(name) {
   stepCrop.hidden = name !== "crop";
@@ -329,10 +342,15 @@ function renderCropHandles(corners) {
 }
 
 // Toont de crop-stap voor `file` en lost de returned promise op met het
-// (evt.) bijgesneden bestand zodra de gebruiker bevestigt of overslaat.
+// (evt.) bijgesneden bestand zodra de gebruiker bevestigt of overslaat,
+// of met `null` als de hele wizard geannuleerd wordt.
 function runCropStep(file) {
   return new Promise((resolve) => {
     showWizardStep("crop");
+    wizardCancelHandler = () => {
+      cleanup();
+      resolve(null);
+    };
     const url = URL.createObjectURL(file);
     cropImage.src = url;
 
@@ -395,6 +413,7 @@ function runCropStep(file) {
       cropSkipBtn.removeEventListener("click", onSkip);
       cropConfirmBtn.removeEventListener("click", onConfirm);
       URL.revokeObjectURL(url);
+      wizardCancelHandler = null;
     }
 
     function onSkip() {
@@ -435,10 +454,14 @@ function runCropStep(file) {
 }
 
 // Toont het controlescherm met wat Claude uit de foto las + de al
-// ingevulde Klant/Medewerker. Lost op met "confirm" of "retry".
+// ingevulde Klant/Medewerker. Lost op met "confirm", "retry" of "cancel".
 function runConfirmStep(file, extraction, meta) {
   return new Promise((resolve) => {
     showWizardStep("confirm");
+    wizardCancelHandler = () => {
+      cleanup();
+      resolve("cancel");
+    };
     const url = URL.createObjectURL(file);
     confirmThumb.src = url;
     const bedrag = typeof extraction.amount === "number"
@@ -455,6 +478,7 @@ function runConfirmStep(file, extraction, meta) {
       confirmRetryBtn.removeEventListener("click", onRetry);
       confirmSubmitBtn.removeEventListener("click", onSubmit);
       URL.revokeObjectURL(url);
+      wizardCancelHandler = null;
     }
     function onRetry() {
       cleanup();
@@ -523,8 +547,15 @@ async function runBonWizard(files, meta) {
     for (let i = 0; i < files.length; i++) {
       setWizardProgress(files.length > 1 ? `Bonnetje ${i + 1} van ${files.length}` : "Bonnetje");
       let file = await runCropStep(files[i]);
+      if (file === null) {
+        // Geannuleerd tijdens het croppen -- deze en alle nog niet
+        // verwerkte foto's blijven gewoon in de lijst staan.
+        mislukt.push(...files.slice(i));
+        break;
+      }
 
       let klaar = false;
+      let geannuleerd = false;
       while (!klaar) {
         showWizardStep("loading");
         setWizardLoadingText("Bonnetje wordt gelezen...");
@@ -542,7 +573,19 @@ async function runBonWizard(files, meta) {
         const actie = await runConfirmStep(file, extraction, meta);
         if (actie === "retry") {
           file = await runCropStep(file);
+          if (file === null) {
+            mislukt.push(...files.slice(i));
+            geannuleerd = true;
+            klaar = true;
+            break;
+          }
           continue;
+        }
+        if (actie === "cancel") {
+          mislukt.push(...files.slice(i));
+          geannuleerd = true;
+          klaar = true;
+          break;
         }
 
         showWizardStep("loading");
@@ -557,9 +600,11 @@ async function runBonWizard(files, meta) {
         }
         klaar = true;
       }
+      if (geannuleerd) break;
     }
   } finally {
     wizardOverlay.hidden = true;
+    wizardCancelHandler = null;
   }
   return { gelukt, mislukt };
 }

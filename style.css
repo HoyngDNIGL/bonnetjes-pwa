@@ -578,6 +578,14 @@ button#uitbetaalSubmitBtn:disabled {
   }
 }
 
+.wizard-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 16px;
+}
+
 .wizard-progress {
   text-align: center;
   font-size: 12px;
@@ -585,7 +593,30 @@ button#uitbetaalSubmitBtn:disabled {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 16px;
+}
+
+.wizard-close {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--paper-2);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wizard-close:hover {
+  background: var(--card-border);
+  color: var(--ink);
 }
 
 .wizard-hint {
