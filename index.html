@@ -203,19 +203,43 @@
 
       <div class="wizard-step" id="stepConfirm" hidden>
         <img id="confirmThumb" class="confirm-thumb" alt="">
-        <div class="confirm-amount">
-          <span class="confirm-amount-value" id="confirmAmount">&euro;&nbsp;0,00</span>
-          <span class="confirm-currency" id="confirmCurrency"></span>
+        <div class="confirm-amount-row">
+          <input type="number" step="0.01" inputmode="decimal" id="confirmAmountInput" class="confirm-amount-input" aria-label="Bedrag">
+          <input type="text" maxlength="3" id="confirmCurrencyInput" class="confirm-currency-input" aria-label="Valuta">
         </div>
         <div class="confirm-rows">
-          <div class="confirm-row"><span>Leverancier</span><strong id="confirmVendor">-</strong></div>
-          <div class="confirm-row"><span>Datum</span><strong id="confirmDate">-</strong></div>
-          <div class="confirm-row"><span>Klant</span><strong id="confirmKlant">-</strong></div>
-          <div class="confirm-row"><span>Medewerker</span><strong id="confirmMedewerker">-</strong></div>
+          <div class="confirm-row">
+            <label for="confirmVendorInput">Leverancier</label>
+            <input type="text" id="confirmVendorInput">
+          </div>
+          <div class="confirm-row">
+            <label for="confirmDateInput">Datum</label>
+            <input type="text" id="confirmDateInput" inputmode="numeric" placeholder="dd-mm-jjjj" maxlength="10">
+          </div>
+          <div class="confirm-row">
+            <label for="confirmKlantSelect">Klant</label>
+            <select id="confirmKlantSelect"></select>
+          </div>
+          <div class="confirm-row" id="confirmKlantAndersWrap" hidden>
+            <label for="confirmKlantAndersInput">Naam klant</label>
+            <input type="text" id="confirmKlantAndersInput">
+          </div>
+          <div class="confirm-row">
+            <label for="confirmMedewerkerSelect">Medewerker</label>
+            <select id="confirmMedewerkerSelect"></select>
+          </div>
+          <div class="confirm-row" id="confirmMedewerkerAndersWrap" hidden>
+            <label for="confirmMedewerkerAndersInput">Naam</label>
+            <input type="text" id="confirmMedewerkerAndersInput">
+          </div>
+          <div class="confirm-row" id="confirmMedewerkerAndersEmailWrap" hidden>
+            <label for="confirmMedewerkerAndersEmailInput">E-mail</label>
+            <input type="email" id="confirmMedewerkerAndersEmailInput">
+          </div>
         </div>
-        <p class="wizard-hint">Klopt bedrag, valuta, klant en medewerker? Zo niet: probeer de foto opnieuw.</p>
+        <p class="wizard-hint">Automatisch gelezen door Claude — controleer en pas aan waar nodig.</p>
         <div class="wizard-actions">
-          <button type="button" class="btn-wizard-ghost" id="confirmRetryBtn">Opnieuw</button>
+          <button type="button" class="btn-wizard-ghost" id="confirmRetryBtn">Opnieuw croppen</button>
           <button type="button" class="btn-wizard-primary" id="confirmSubmitBtn">Bevestig en verstuur</button>
         </div>
       </div>

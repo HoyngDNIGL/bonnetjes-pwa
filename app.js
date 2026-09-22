@@ -287,12 +287,18 @@ const cropSkipBtn = document.getElementById("cropSkipBtn");
 const cropConfirmBtn = document.getElementById("cropConfirmBtn");
 const wizardLoadingText = document.getElementById("wizardLoadingText");
 const confirmThumb = document.getElementById("confirmThumb");
-const confirmAmount = document.getElementById("confirmAmount");
-const confirmCurrency = document.getElementById("confirmCurrency");
-const confirmVendor = document.getElementById("confirmVendor");
-const confirmDate = document.getElementById("confirmDate");
-const confirmKlant = document.getElementById("confirmKlant");
-const confirmMedewerker = document.getElementById("confirmMedewerker");
+const confirmAmountInput = document.getElementById("confirmAmountInput");
+const confirmCurrencyInput = document.getElementById("confirmCurrencyInput");
+const confirmVendorInput = document.getElementById("confirmVendorInput");
+const confirmDateInput = document.getElementById("confirmDateInput");
+const confirmKlantSelect = document.getElementById("confirmKlantSelect");
+const confirmKlantAndersWrap = document.getElementById("confirmKlantAndersWrap");
+const confirmKlantAndersInput = document.getElementById("confirmKlantAndersInput");
+const confirmMedewerkerSelect = document.getElementById("confirmMedewerkerSelect");
+const confirmMedewerkerAndersWrap = document.getElementById("confirmMedewerkerAndersWrap");
+const confirmMedewerkerAndersInput = document.getElementById("confirmMedewerkerAndersInput");
+const confirmMedewerkerAndersEmailWrap = document.getElementById("confirmMedewerkerAndersEmailWrap");
+const confirmMedewerkerAndersEmailInput = document.getElementById("confirmMedewerkerAndersEmailInput");
 const confirmRetryBtn = document.getElementById("confirmRetryBtn");
 const confirmSubmitBtn = document.getElementById("confirmSubmitBtn");
 const wizardCancelBtn = document.getElementById("wizardCancelBtn");
@@ -453,40 +459,119 @@ function runCropStep(file) {
   });
 }
 
-// Toont het controlescherm met wat Claude uit de foto las + de al
-// ingevulde Klant/Medewerker. Lost op met "confirm", "retry" of "cancel".
+// Toont het controlescherm met wat Claude uit de foto las, als bewerkbare
+// velden (voorgevuld, maar niet blind vertrouwd -- de LLM leest bijna
+// altijd goed, maar "bijna altijd" is niet "altijd"). Klant/Medewerker
+// staan er ook bewerkbaar in, voorgevuld met wat in het hoofdformulier
+// is gekozen. Lost op met { actie: "confirm", values } / { actie: "retry" }
+// / { actie: "cancel" }.
 function runConfirmStep(file, extraction, meta) {
   return new Promise((resolve) => {
     showWizardStep("confirm");
     wizardCancelHandler = () => {
       cleanup();
-      resolve("cancel");
+      resolve({ actie: "cancel" });
     };
     const url = URL.createObjectURL(file);
     confirmThumb.src = url;
-    const bedrag = typeof extraction.amount === "number"
-      ? extraction.amount.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "?";
-    confirmAmount.textContent = `${bedrag}`;
-    confirmCurrency.textContent = extraction.currency || "?";
-    confirmVendor.textContent = extraction.vendor || "-";
-    confirmDate.textContent = extraction.receiptDate || "-";
-    confirmKlant.textContent = meta.klant || "-";
-    confirmMedewerker.textContent = meta.submittedBy || "-";
+
+    confirmAmountInput.value = typeof extraction.amount === "number" ? extraction.amount : "";
+    confirmCurrencyInput.value = (extraction.currency || "").toUpperCase();
+    confirmVendorInput.value = extraction.vendor || "";
+    confirmDateInput.value = isoToDutchDate(extraction.receiptDate);
+
+    fillSelect(confirmKlantSelect, [...CONFIG.clients, "Anders"]);
+    if (CONFIG.clients.includes(meta.klant)) {
+      confirmKlantSelect.value = meta.klant;
+      confirmKlantAndersWrap.hidden = true;
+    } else {
+      confirmKlantSelect.value = "Anders";
+      confirmKlantAndersInput.value = meta.klant || "";
+      confirmKlantAndersWrap.hidden = false;
+    }
+
+    fillSelect(confirmMedewerkerSelect, [...CONFIG.employees, "Anders"]);
+    if (CONFIG.employees.includes(meta.submittedBy)) {
+      confirmMedewerkerSelect.value = meta.submittedBy;
+      confirmMedewerkerAndersWrap.hidden = true;
+      confirmMedewerkerAndersEmailWrap.hidden = true;
+    } else {
+      confirmMedewerkerSelect.value = "Anders";
+      confirmMedewerkerAndersInput.value = meta.submittedBy || "";
+      confirmMedewerkerAndersEmailInput.value = meta.submittedByEmail || "";
+      confirmMedewerkerAndersWrap.hidden = false;
+      confirmMedewerkerAndersEmailWrap.hidden = false;
+    }
+
+    function onKlantChange() {
+      confirmKlantAndersWrap.hidden = confirmKlantSelect.value !== "Anders";
+    }
+    function onMedewerkerChange() {
+      const isAnders = confirmMedewerkerSelect.value === "Anders";
+      confirmMedewerkerAndersWrap.hidden = !isAnders;
+      confirmMedewerkerAndersEmailWrap.hidden = !isAnders;
+    }
+    confirmKlantSelect.addEventListener("change", onKlantChange);
+    confirmMedewerkerSelect.addEventListener("change", onMedewerkerChange);
+    confirmDateInput.addEventListener("input", formatDatumInput);
 
     function cleanup() {
       confirmRetryBtn.removeEventListener("click", onRetry);
       confirmSubmitBtn.removeEventListener("click", onSubmit);
+      confirmKlantSelect.removeEventListener("change", onKlantChange);
+      confirmMedewerkerSelect.removeEventListener("change", onMedewerkerChange);
+      confirmDateInput.removeEventListener("input", formatDatumInput);
       URL.revokeObjectURL(url);
       wizardCancelHandler = null;
     }
     function onRetry() {
       cleanup();
-      resolve("retry");
+      resolve({ actie: "retry" });
     }
     function onSubmit() {
+      const amount = parseFloat(confirmAmountInput.value.replace(",", "."));
+      if (isNaN(amount)) {
+        setWizardStatus("Vul een geldig bedrag in.", "error");
+        return;
+      }
+      const currency = confirmCurrencyInput.value.trim().toUpperCase();
+      if (!currency) {
+        setWizardStatus("Vul een valuta in (bv. EUR).", "error");
+        return;
+      }
+      const datum = parseDutchDate(confirmDateInput.value);
+      if (!datum) {
+        setWizardStatus("Vul een geldige datum in (dd-mm-jjjj).", "error");
+        return;
+      }
+      const klant = resolveWithAnders(confirmKlantSelect, confirmKlantAndersInput);
+      if (!klant) {
+        setWizardStatus("Vul de klantnaam in.", "error");
+        return;
+      }
+      const submittedBy = resolveWithAnders(confirmMedewerkerSelect, confirmMedewerkerAndersInput);
+      if (!submittedBy) {
+        setWizardStatus("Vul de naam van de medewerker in.", "error");
+        return;
+      }
+      const submittedByEmail = resolveSubmittedByEmail(confirmMedewerkerSelect, confirmMedewerkerAndersEmailInput);
+      if (!submittedByEmail || !submittedByEmail.includes("@")) {
+        setWizardStatus("Vul een geldig e-mailadres in voor de medewerker.", "error");
+        return;
+      }
       cleanup();
-      resolve("confirm");
+      resolve({
+        actie: "confirm",
+        values: {
+          amount,
+          currency,
+          vendor: confirmVendorInput.value.trim(),
+          receiptDate: datum.iso,
+          klant,
+          submittedBy,
+          submittedByEmail,
+        },
+      });
     }
     confirmRetryBtn.addEventListener("click", onRetry);
     confirmSubmitBtn.addEventListener("click", onSubmit);
@@ -511,7 +596,12 @@ async function extractBonnetje(file, index) {
   return { ...data, filename };
 }
 
-async function bevestigBonnetje(extraction, meta) {
+// `values` komt uit het controlescherm (runConfirmStep) -- dat is de
+// bewerkbare, eventueel door de gebruiker gecorrigeerde versie van wat
+// Claude las, dus dit is wat er daadwerkelijk wordt opgeslagen (niet de
+// ruwe `extraction`). Categorie/Toelichting zijn op het controlescherm
+// niet bewerkbaar, die komen nog uit het hoofdformulier (`meta`).
+async function bevestigBonnetje(extraction, values, meta) {
   const res = await fetch(CONFIG.flowUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -519,15 +609,15 @@ async function bevestigBonnetje(extraction, meta) {
       Actie: "bevestig",
       PhotoRef: extraction.photoRef,
       FileName: extraction.filename,
-      SubmittedBy: meta.submittedBy,
-      SubmittedByEmail: meta.submittedByEmail,
+      SubmittedBy: values.submittedBy,
+      SubmittedByEmail: values.submittedByEmail,
       Categorie: meta.categorie,
       Toelichting: meta.toelichting,
-      Klant: meta.klant,
-      Amount: extraction.amount,
-      Currency: extraction.currency,
-      Vendor: extraction.vendor,
-      ReceiptDate: extraction.receiptDate,
+      Klant: values.klant,
+      Amount: values.amount,
+      Currency: values.currency,
+      Vendor: values.vendor,
+      ReceiptDate: values.receiptDate,
     }),
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
@@ -571,7 +661,7 @@ async function runBonWizard(files, meta) {
           break;
         }
 
-        const actie = await runConfirmStep(file, extraction, meta);
+        const { actie, values } = await runConfirmStep(file, extraction, meta);
         if (actie === "retry") {
           file = await runCropStep(file);
           if (file === null) {
@@ -592,7 +682,7 @@ async function runBonWizard(files, meta) {
         showWizardStep("loading");
         setWizardLoadingText("Bonnetje wordt opgeslagen...");
         try {
-          await bevestigBonnetje(extraction, meta);
+          await bevestigBonnetje(extraction, values, meta);
           gelukt++;
         } catch (err) {
           mislukt.push(files[i]);
@@ -686,6 +776,15 @@ function parseDutchDate(value) {
   const d = new Date(year, month - 1, day);
   if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
   return { iso: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` };
+}
+
+// ISO (jjjj-mm-dd) -> dd-mm-jjjj, voor weergave in het (tekst)datumveld
+// van het controlescherm. Geeft "" terug bij een ontbrekende/rare waarde
+// i.p.v. te crashen -- Claude's datumveld is niet gegarandeerd geldig.
+function isoToDutchDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
+  if (!m) return "";
+  return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
 function setOverzichtStatus(text, state) {

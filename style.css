@@ -761,27 +761,49 @@ button#uitbetaalSubmitBtn:disabled {
   background: var(--paper-2);
 }
 
-.confirm-amount {
-  text-align: center;
+.confirm-amount-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
   margin-top: 18px;
 }
 
-.confirm-amount-value {
+.confirm-amount-input {
   font-family: var(--display);
   font-size: 2.2rem;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.02em;
+  border: none;
+  background: transparent;
+  text-align: right;
+  width: 8ch;
+  padding: 2px 4px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
 }
 
-.confirm-currency {
-  display: block;
-  margin-top: 2px;
+.confirm-currency-input {
+  font-family: var(--text);
   font-size: 13px;
   font-weight: 600;
   color: var(--blue);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  border: none;
+  background: transparent;
+  width: 3.5ch;
+  padding: 2px 4px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.confirm-amount-input:focus,
+.confirm-currency-input:focus {
+  outline: none;
+  background: var(--paper-2);
+  box-shadow: 0 0 0 2px rgba(30, 127, 216, 0.25);
 }
 
 .confirm-rows {
@@ -795,7 +817,8 @@ button#uitbetaalSubmitBtn:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--card-border);
   font-size: 14px;
 }
@@ -804,12 +827,42 @@ button#uitbetaalSubmitBtn:disabled {
   border-bottom: none;
 }
 
-.confirm-row span {
+.confirm-row label {
   color: var(--muted);
+  font-weight: 500;
+  font-size: 13px;
+  margin: 0;
+  flex: none;
 }
 
-.confirm-row strong {
+.confirm-row input,
+.confirm-row select {
   color: var(--ink);
   font-weight: 600;
+  font-family: var(--text);
+  font-size: 14px;
   text-align: right;
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  border-radius: 8px;
+  flex: 1;
+  min-width: 0;
+  transition: background 0.15s ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.confirm-row select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'><path d='M4 6l4 4 4-4' stroke='%235A6470' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 24px;
+}
+
+.confirm-row input:focus,
+.confirm-row select:focus {
+  outline: none;
+  background: var(--paper-2);
+  box-shadow: 0 0 0 2px rgba(30, 127, 216, 0.25);
 }
