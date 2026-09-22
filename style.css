@@ -561,6 +561,23 @@ button#uitbetaalSubmitBtn:disabled {
   animation: bon-pop 0.2s ease;
 }
 
+/* Op bredere schermen (desktop/tablet) oogt een onderaan-vastgeplakte
+   "bottom sheet" als per ongeluk verkeerd gepositioneerd -- daar centreren
+   we 'm gewoon midden op het scherm, met ronde hoeken rondom. */
+@media (min-width: 640px) {
+  .wizard-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .wizard-card {
+    max-height: 85vh;
+    border-radius: 24px;
+    padding: 28px 24px;
+    box-shadow: 0 24px 60px -20px rgba(15, 23, 32, 0.45);
+  }
+}
+
 .wizard-progress {
   text-align: center;
   font-size: 12px;
