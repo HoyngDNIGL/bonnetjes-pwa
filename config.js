@@ -30,7 +30,7 @@ const CONFIG = {
   // Hardcoded per CLAUDE.md -- editing this list means editing the code
   // and redeploying, which is fine at this scale.
   employees: ["Edwin", "Niels", "Stijn"],
-  categories: ["Hotel", "Taxi", "Vlucht", "Eten", "Anders"],
+  categories: ["Hotel", "Taxi", "Vlucht", "Tol", "Lunch", "Diner", "Anders"],
   clients: ["Arpa", "Trespa", "Zelf"],
 
   // E-mailadres per vaste medewerker, voor SubmittedByEmail (routering van de

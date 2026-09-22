@@ -1,16 +1,22 @@
 :root {
-  --bg: #07080b;
-  --card-border: rgba(255, 255, 255, 0.08);
-  --input-bg: #161a22;
-  --ink: #f4f6fa;
-  --label: #e4e8ee;
-  --muted: #8a93a3;
-  --caption: #6b7280;
-  --success: #4fd483;
-  --success-bg: rgba(46, 160, 90, 0.1);
-  --success-border: rgba(60, 180, 100, 0.28);
-  --error: #ff6b6b;
-  --radius: 12px;
+  --paper: #F7F5F0;
+  --paper-2: #EFECE5;
+  --card-bg: #FFFFFF;
+  --card-border: #DEDAD1;
+  --input-bg: #FFFFFF;
+  --ink: #0F1720;
+  --label: #0F1720;
+  --muted: #5A6470;
+  --caption: #9AA3AC;
+  --blue: #1E7FD8;
+  --blue-deep: #0F5FA8;
+  --success: #178A4C;
+  --success-bg: rgba(23, 138, 76, 0.08);
+  --success-border: rgba(23, 138, 76, 0.25);
+  --error: #C23B3B;
+  --display: "Inter Tight", "Inter", system-ui, sans-serif;
+  --text: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --radius: 14px;
 }
 
 * { box-sizing: border-box; }
@@ -22,10 +28,10 @@ html, body {
 }
 
 body {
-  font-family: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-family: var(--text);
   margin: 0;
   color: var(--ink);
-  background: var(--bg);
+  background: var(--paper);
   -webkit-font-smoothing: antialiased;
   position: relative;
   overflow-x: hidden;
@@ -33,26 +39,20 @@ body {
 
 .glow {
   position: absolute;
-  top: -120px;
+  top: -160px;
   left: 50%;
   transform: translateX(-50%);
   width: 640px;
   max-width: 160vw;
   height: 320px;
-  background: radial-gradient(circle, rgba(50, 140, 230, 0.28) 0%, rgba(50, 140, 230, 0) 70%);
+  background: radial-gradient(circle, rgba(30, 127, 216, 0.16) 0%, rgba(30, 127, 216, 0) 70%);
   filter: blur(10px);
-  animation: bon-glow 6s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
 }
 
-@keyframes bon-glow {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.85; }
-}
-
 @keyframes bon-pop {
-  from { transform: scale(0.9); opacity: 0; }
+  from { transform: scale(0.96); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 
@@ -72,7 +72,7 @@ body {
 }
 
 .logo-img {
-  height: 34px;
+  height: 30px;
   width: auto;
   display: block;
   flex: none;
@@ -81,15 +81,16 @@ body {
 .logo-divider {
   width: 1px;
   height: 26px;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--card-border);
   flex: none;
 }
 
 h1 {
+  font-family: var(--display);
   font-size: 19px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
   margin: 0;
 }
@@ -103,10 +104,10 @@ h1 {
 
 .tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
   margin-bottom: 20px;
-  background: var(--input-bg);
+  background: var(--paper-2);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
 }
@@ -116,18 +117,19 @@ h1 {
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 600;
-  font-family: inherit;
+  font-family: var(--text);
   color: var(--muted);
   background: transparent;
   border: none;
   border-radius: calc(var(--radius) - 4px);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tab-btn.active {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--blue);
+  background: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(15, 23, 32, 0.08);
 }
 
 .tab-panel {
@@ -136,9 +138,9 @@ h1 {
 
 .filter-toggle {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
-  background: var(--input-bg);
+  background: var(--paper-2);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
 }
@@ -156,20 +158,21 @@ h1 {
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 600;
-  font-family: inherit;
+  font-family: var(--text);
   color: var(--muted);
   border-radius: calc(var(--radius) - 4px);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .filter-toggle input[type="radio"]:checked + label {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--blue);
+  background: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(15, 23, 32, 0.08);
 }
 
 .filter-toggle input[type="radio"]:focus-visible + label {
-  outline: 2px solid rgba(90, 160, 240, 0.6);
+  outline: 2px solid rgba(30, 127, 216, 0.45);
   outline-offset: -2px;
 }
 
@@ -202,7 +205,7 @@ h1 {
   font-size: 26px;
   font-weight: 700;
   padding: 0;
-  font-family: inherit;
+  font-family: var(--text);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
   background: var(--input-bg);
@@ -214,13 +217,13 @@ h1 {
 
 .pin-cijfer:focus {
   outline: none;
-  border-color: rgba(90, 160, 240, 0.6);
-  box-shadow: 0 0 0 3px rgba(50, 140, 230, 0.18);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(30, 127, 216, 0.15);
   transform: translateY(-1px);
 }
 
 .pin-cijfer[data-error="true"] {
-  border-color: rgba(255, 107, 107, 0.7);
+  border-color: var(--error);
   animation: pin-shake 0.3s ease;
 }
 
@@ -241,12 +244,16 @@ h1 {
   border: none;
   padding: 0;
   margin: 0;
-  font-family: inherit;
+  font-family: var(--text);
   font-size: 12px;
   font-weight: 600;
-  color: #7fb2f0;
+  color: var(--blue);
   cursor: pointer;
   width: auto;
+}
+
+.link-btn:hover {
+  color: var(--blue-deep);
 }
 
 .bon-lijst {
@@ -284,7 +291,7 @@ h1 {
   flex: none;
   width: 16px;
   height: 16px;
-  accent-color: #5aa0f0;
+  accent-color: var(--blue);
 }
 
 .bon-checkbox-main {
@@ -300,11 +307,11 @@ h1 {
 }
 
 .card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 20px;
   padding: 28px 24px;
-  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 20px 50px -30px rgba(15, 23, 32, 0.18);
 }
 
 .field {
@@ -330,7 +337,7 @@ input[type="email"] {
   width: 100%;
   padding: 14px 16px;
   font-size: 15px;
-  font-family: inherit;
+  font-family: var(--text);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
   background: var(--input-bg);
@@ -341,7 +348,7 @@ input[type="email"] {
 }
 
 select {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'><path d='M4 6l4 4 4-4' stroke='%238a93a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'><path d='M4 6l4 4 4-4' stroke='%235A6470' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 40px;
@@ -353,8 +360,8 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="file"]:focus + .photo-hint {
   outline: none;
-  border-color: rgba(90, 160, 240, 0.5);
-  box-shadow: 0 0 0 3px rgba(50, 140, 230, 0.15);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(30, 127, 216, 0.15);
 }
 
 textarea {
@@ -387,17 +394,17 @@ input[type="text"] {
   gap: 8px;
   min-height: 76px;
   padding: 26px 16px;
-  border: 1.5px dashed rgba(255, 255, 255, 0.14);
+  border: 1.5px dashed var(--card-border);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--paper-2);
   color: var(--muted);
   font-size: 14px;
   text-align: center;
 }
 
 .photo-input input[type="file"]:hover ~ .photo-hint {
-  border-color: rgba(90, 160, 240, 0.5);
-  color: #b7c0cf;
+  border-color: var(--blue);
+  color: var(--ink);
 }
 
 .photo-confirm-list {
@@ -424,7 +431,7 @@ input[type="text"] {
   object-fit: cover;
   border-radius: 8px;
   flex: none;
-  background: var(--input-bg);
+  background: var(--paper-2);
 }
 
 .photo-check {
@@ -432,7 +439,7 @@ input[type="text"] {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #33b96a;
+  background: var(--success);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -443,7 +450,7 @@ input[type="text"] {
 
 .photo-filename {
   font-size: 14px;
-  color: #a9e6c1;
+  color: var(--success);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -458,7 +465,7 @@ input[type="text"] {
   border-radius: 50%;
   border: none;
   background: none;
-  color: #7f9a89;
+  color: var(--muted);
   font-size: 17px;
   line-height: 1;
   cursor: pointer;
@@ -468,31 +475,35 @@ input[type="text"] {
   padding: 4px;
 }
 
-.photo-remove:active {
-  color: #a9e6c1;
+.photo-remove:hover {
+  color: var(--error);
 }
 
-button[type="submit"] {
+button[type="submit"],
+button#uitbetaalSubmitBtn {
   margin-top: 26px;
   width: 100%;
   padding: 16px;
   font-size: 16px;
-  font-weight: 700;
-  font-family: inherit;
+  font-weight: 600;
+  font-family: var(--text);
   border: none;
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, #2f7fe0, #1a5fc4);
+  border-radius: 999px;
+  background: var(--blue);
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 10px 24px -8px rgba(30, 100, 220, 0.55);
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 10px 24px -10px rgba(30, 127, 216, 0.55);
+  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
 }
 
-button[type="submit"]:hover {
+button[type="submit"]:hover,
+button#uitbetaalSubmitBtn:hover {
+  background: var(--blue-deep);
   transform: translateY(-1px);
 }
 
-button[type="submit"]:disabled {
+button[type="submit"]:disabled,
+button#uitbetaalSubmitBtn:disabled {
   opacity: 0.6;
   cursor: default;
   transform: none;
