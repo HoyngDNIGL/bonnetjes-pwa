@@ -542,6 +542,7 @@ async function bevestigBonnetje(extraction, meta) {
 async function runBonWizard(files, meta) {
   const mislukt = [];
   let gelukt = 0;
+  let geannuleerd = false;
   wizardOverlay.hidden = false;
   try {
     for (let i = 0; i < files.length; i++) {
@@ -551,11 +552,11 @@ async function runBonWizard(files, meta) {
         // Geannuleerd tijdens het croppen -- deze en alle nog niet
         // verwerkte foto's blijven gewoon in de lijst staan.
         mislukt.push(...files.slice(i));
+        geannuleerd = true;
         break;
       }
 
       let klaar = false;
-      let geannuleerd = false;
       while (!klaar) {
         showWizardStep("loading");
         setWizardLoadingText("Bonnetje wordt gelezen...");
@@ -606,7 +607,7 @@ async function runBonWizard(files, meta) {
     wizardOverlay.hidden = true;
     wizardCancelHandler = null;
   }
-  return { gelukt, mislukt };
+  return { gelukt, mislukt, geannuleerd };
 }
 
 // --- Tabs ---
@@ -927,7 +928,7 @@ form.addEventListener("submit", async (e) => {
   setStatus("");
 
   try {
-    const { gelukt, mislukt } = await runBonWizard(teVersturen, {
+    const { gelukt, mislukt, geannuleerd } = await runBonWizard(teVersturen, {
       submittedBy,
       submittedByEmail,
       categorie: categorieSelect.value,
@@ -951,6 +952,10 @@ form.addEventListener("submit", async (e) => {
       klantAndersWrap.hidden = true;
       klantAndersInput.value = "";
       clearAllPhotos();
+    } else if (geannuleerd) {
+      // Bewust geannuleerd door de gebruiker (kruisje) -- geen foutmelding,
+      // dat is verwarrend voor iets wat ze zelf net deden.
+      setStatus(gelukt ? `${gelukt} bon(nen) verstuurd, de rest geannuleerd.` : "");
     } else if (gelukt) {
       setStatus(`${gelukt} van ${teVersturen.length} bonnen verstuurd, ${mislukt.length} mislukt -- probeer de overgebleven foto('s) opnieuw.`, "error");
     } else {
