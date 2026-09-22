@@ -171,6 +171,56 @@
     </section>
   </div>
 
+  <div class="wizard-overlay" id="wizardOverlay" hidden>
+    <div class="wizard-card">
+      <div class="wizard-progress" id="wizardProgress">Bonnetje</div>
+
+      <div class="wizard-step" id="stepCrop" hidden>
+        <div class="crop-stage" id="cropStage">
+          <img id="cropImage" class="crop-image" alt="">
+          <svg class="crop-svg" id="cropSvg" preserveAspectRatio="none">
+            <polygon id="cropPoly" class="crop-poly"></polygon>
+          </svg>
+          <div class="crop-handle" data-corner="0"></div>
+          <div class="crop-handle" data-corner="1"></div>
+          <div class="crop-handle" data-corner="2"></div>
+          <div class="crop-handle" data-corner="3"></div>
+        </div>
+        <p class="wizard-hint">Sleep de hoekpunten naar de randen van het bonnetje.</p>
+        <div class="wizard-actions">
+          <button type="button" class="btn-wizard-ghost" id="cropSkipBtn">Niet bijsnijden</button>
+          <button type="button" class="btn-wizard-primary" id="cropConfirmBtn">Bijsnijden</button>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="stepLoading" hidden>
+        <div class="wizard-spinner" aria-hidden="true"></div>
+        <p class="wizard-loading-text" id="wizardLoadingText">Bonnetje wordt gelezen...</p>
+      </div>
+
+      <div class="wizard-step" id="stepConfirm" hidden>
+        <img id="confirmThumb" class="confirm-thumb" alt="">
+        <div class="confirm-amount">
+          <span class="confirm-amount-value" id="confirmAmount">&euro;&nbsp;0,00</span>
+          <span class="confirm-currency" id="confirmCurrency"></span>
+        </div>
+        <div class="confirm-rows">
+          <div class="confirm-row"><span>Leverancier</span><strong id="confirmVendor">-</strong></div>
+          <div class="confirm-row"><span>Datum</span><strong id="confirmDate">-</strong></div>
+          <div class="confirm-row"><span>Klant</span><strong id="confirmKlant">-</strong></div>
+          <div class="confirm-row"><span>Medewerker</span><strong id="confirmMedewerker">-</strong></div>
+        </div>
+        <p class="wizard-hint">Klopt bedrag, valuta, klant en medewerker? Zo niet: probeer de foto opnieuw.</p>
+        <div class="wizard-actions">
+          <button type="button" class="btn-wizard-ghost" id="confirmRetryBtn">Opnieuw</button>
+          <button type="button" class="btn-wizard-primary" id="confirmSubmitBtn">Bevestig en verstuur</button>
+        </div>
+      </div>
+
+      <p class="status-msg" id="wizardStatusMsg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script>

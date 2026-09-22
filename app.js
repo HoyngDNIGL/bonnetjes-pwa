@@ -150,6 +150,420 @@ function compressImageToBase64(file, maxDim, quality) {
   });
 }
 
+// --- Bon-wizard: croppen (perspectief-correctie) / laden / controleren ---
+
+// Standaard "unit-square naar quadrilateral"-projectie (Heckbert),
+// gebruikt om een 3x3 projectiematrix te vinden die twee viervlakken op
+// elkaar afbeeldt. m = [m0 m1 m2, m3 m4 m5, m6 m7 m8] (rij-majeur).
+function adj3(m) {
+  return [
+    m[4] * m[8] - m[5] * m[7], m[2] * m[7] - m[1] * m[8], m[1] * m[5] - m[2] * m[4],
+    m[5] * m[6] - m[3] * m[8], m[0] * m[8] - m[2] * m[6], m[2] * m[3] - m[0] * m[5],
+    m[3] * m[7] - m[4] * m[6], m[1] * m[6] - m[0] * m[7], m[0] * m[4] - m[1] * m[3],
+  ];
+}
+function multmm(a, b) {
+  const c = new Array(9);
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      let sum = 0;
+      for (let k = 0; k < 3; k++) sum += a[i * 3 + k] * b[k * 3 + j];
+      c[i * 3 + j] = sum;
+    }
+  }
+  return c;
+}
+function multmv(m, v) {
+  return [
+    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
+}
+function basisToPoints(x0, y0, x1, y1, x2, y2, x3, y3) {
+  const m = [x0, x1, x2, y0, y1, y2, 1, 1, 1];
+  const v = multmv(adj3(m), [x3, y3, 1]);
+  return multmm(m, [v[0], 0, 0, 0, v[1], 0, 0, 0, v[2]]);
+}
+// Matrix die punt (x0s,y0s)..(x3s,y3s) afbeeldt op (x0d,y0d)..(x3d,y3d).
+function general2DProjection(x0s, y0s, x1s, y1s, x2s, y2s, x3s, y3s, x0d, y0d, x1d, y1d, x2d, y2d, x3d, y3d) {
+  const s = basisToPoints(x0s, y0s, x1s, y1s, x2s, y2s, x3s, y3s);
+  const d = basisToPoints(x0d, y0d, x1d, y1d, x2d, y2d, x3d, y3d);
+  return multmm(d, adj3(s));
+}
+
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+// corners = [linksboven, rechtsboven, rechtsonder, linksonder], in
+// natuurlijke pixelcoördinaten van de bron-afbeelding. Rekent de
+// perspectief-correctie (hoeken "rechttrekken" naar een rechthoek, niet
+// zomaar een rechte crop) pixel-voor-pixel uit met bilineaire sampling.
+function warpPerspective(img, corners) {
+  const [tl, tr, br, bl] = corners;
+  const widthTop = dist(tl, tr);
+  const widthBottom = dist(bl, br);
+  const heightLeft = dist(tl, bl);
+  const heightRight = dist(tr, br);
+  let outW = Math.round((widthTop + widthBottom) / 2) || 1;
+  let outH = Math.round((heightLeft + heightRight) / 2) || 1;
+  const MAX_SIDE = 1500;
+  const schaal = Math.min(1, MAX_SIDE / Math.max(outW, outH));
+  outW = Math.max(200, Math.round(outW * schaal));
+  outH = Math.max(200, Math.round(outH * schaal));
+
+  const srcCanvas = document.createElement("canvas");
+  srcCanvas.width = img.naturalWidth;
+  srcCanvas.height = img.naturalHeight;
+  srcCanvas.getContext("2d").drawImage(img, 0, 0);
+  const srcCtx = srcCanvas.getContext("2d");
+  const srcData = srcCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height).data;
+  const srcW = srcCanvas.width;
+  const srcH = srcCanvas.height;
+
+  const destCanvas = document.createElement("canvas");
+  destCanvas.width = outW;
+  destCanvas.height = outH;
+  const destCtx = destCanvas.getContext("2d");
+  const destImgData = destCtx.createImageData(outW, outH);
+  const destData = destImgData.data;
+
+  // M beeldt een punt in het doel (rechthoek) af op de bijbehorende
+  // (fractionele) positie in de bron -- zo kunnen we per doelpixel
+  // "terugvragen" welke bronpixel erbij hoort (inverse sampling).
+  const M = general2DProjection(
+    0, 0, outW, 0, outW, outH, 0, outH,
+    tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y
+  );
+
+  for (let dy = 0; dy < outH; dy++) {
+    for (let dx = 0; dx < outW; dx++) {
+      const w = M[6] * dx + M[7] * dy + M[8];
+      const sx = (M[0] * dx + M[1] * dy + M[2]) / w;
+      const sy = (M[3] * dx + M[4] * dy + M[5]) / w;
+      const di = (dy * outW + dx) * 4;
+      if (sx >= 0 && sx < srcW - 1 && sy >= 0 && sy < srcH - 1) {
+        const x0 = Math.floor(sx);
+        const y0 = Math.floor(sy);
+        const fx = sx - x0;
+        const fy = sy - y0;
+        const i00 = (y0 * srcW + x0) * 4;
+        const i10 = i00 + 4;
+        const i01 = i00 + srcW * 4;
+        const i11 = i01 + 4;
+        for (let c = 0; c < 4; c++) {
+          const top = srcData[i00 + c] + (srcData[i10 + c] - srcData[i00 + c]) * fx;
+          const bottom = srcData[i01 + c] + (srcData[i11 + c] - srcData[i01 + c]) * fx;
+          destData[di + c] = top + (bottom - top) * fy;
+        }
+      } else {
+        destData[di + 3] = 255;
+        destData[di] = destData[di + 1] = destData[di + 2] = 255;
+      }
+    }
+  }
+  destCtx.putImageData(destImgData, 0, 0);
+  return destCanvas;
+}
+
+function canvasToJpegFile(canvas, filename, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(new File([blob], filename, { type: "image/jpeg" })), "image/jpeg", quality);
+  });
+}
+
+const wizardOverlay = document.getElementById("wizardOverlay");
+const wizardProgress = document.getElementById("wizardProgress");
+const wizardStatusMsg = document.getElementById("wizardStatusMsg");
+const stepCrop = document.getElementById("stepCrop");
+const stepLoading = document.getElementById("stepLoading");
+const stepConfirm = document.getElementById("stepConfirm");
+const cropStage = document.getElementById("cropStage");
+const cropImage = document.getElementById("cropImage");
+const cropPoly = document.getElementById("cropPoly");
+const cropHandles = Array.from(document.querySelectorAll(".crop-handle"));
+const cropSkipBtn = document.getElementById("cropSkipBtn");
+const cropConfirmBtn = document.getElementById("cropConfirmBtn");
+const wizardLoadingText = document.getElementById("wizardLoadingText");
+const confirmThumb = document.getElementById("confirmThumb");
+const confirmAmount = document.getElementById("confirmAmount");
+const confirmCurrency = document.getElementById("confirmCurrency");
+const confirmVendor = document.getElementById("confirmVendor");
+const confirmDate = document.getElementById("confirmDate");
+const confirmKlant = document.getElementById("confirmKlant");
+const confirmMedewerker = document.getElementById("confirmMedewerker");
+const confirmRetryBtn = document.getElementById("confirmRetryBtn");
+const confirmSubmitBtn = document.getElementById("confirmSubmitBtn");
+
+function showWizardStep(name) {
+  stepCrop.hidden = name !== "crop";
+  stepLoading.hidden = name !== "loading";
+  stepConfirm.hidden = name !== "confirm";
+  wizardStatusMsg.textContent = "";
+  delete wizardStatusMsg.dataset.state;
+}
+
+function setWizardProgress(text) {
+  wizardProgress.textContent = text;
+}
+
+function setWizardLoadingText(text) {
+  wizardLoadingText.textContent = text;
+}
+
+function setWizardStatus(text, state) {
+  wizardStatusMsg.textContent = text;
+  if (state) wizardStatusMsg.dataset.state = state;
+  else delete wizardStatusMsg.dataset.state;
+}
+
+// Positioneert de 4 sleep-handvaten + de blauwe polygoon-omtrek op basis
+// van corners (in CSS-pixels t.o.v. cropStage).
+function renderCropHandles(corners) {
+  cropPoly.setAttribute("points", corners.map((c) => `${c.x},${c.y}`).join(" "));
+  cropHandles.forEach((el, i) => {
+    el.style.left = `${corners[i].x}px`;
+    el.style.top = `${corners[i].y}px`;
+  });
+}
+
+// Toont de crop-stap voor `file` en lost de returned promise op met het
+// (evt.) bijgesneden bestand zodra de gebruiker bevestigt of overslaat.
+function runCropStep(file) {
+  return new Promise((resolve) => {
+    showWizardStep("crop");
+    const url = URL.createObjectURL(file);
+    cropImage.src = url;
+
+    let corners = null; // CSS-pixel-coördinaten t.o.v. cropStage
+    let naturalToCss = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    function initCorners() {
+      const stageRect = cropStage.getBoundingClientRect();
+      const iw = cropImage.naturalWidth;
+      const ih = cropImage.naturalHeight;
+      const scale = Math.min(stageRect.width / iw, stageRect.height / ih);
+      const dispW = iw * scale;
+      const dispH = ih * scale;
+      offsetX = (stageRect.width - dispW) / 2;
+      offsetY = (stageRect.height - dispH) / 2;
+      naturalToCss = scale;
+      const pad = 14; // iets binnen de rand, makkelijker beetpakken
+      corners = [
+        { x: offsetX + pad, y: offsetY + pad },
+        { x: offsetX + dispW - pad, y: offsetY + pad },
+        { x: offsetX + dispW - pad, y: offsetY + dispH - pad },
+        { x: offsetX + pad, y: offsetY + dispH - pad },
+      ];
+      renderCropHandles(corners);
+    }
+
+    cropImage.onload = initCorners;
+    if (cropImage.complete && cropImage.naturalWidth) initCorners();
+
+    let dragIndex = null;
+    function onPointerDown(e) {
+      dragIndex = parseInt(e.currentTarget.dataset.corner, 10);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    function onPointerMove(e) {
+      if (dragIndex === null) return;
+      const stageRect = cropStage.getBoundingClientRect();
+      const x = Math.min(Math.max(e.clientX - stageRect.left, 0), stageRect.width);
+      const y = Math.min(Math.max(e.clientY - stageRect.top, 0), stageRect.height);
+      corners[dragIndex] = { x, y };
+      renderCropHandles(corners);
+    }
+    function onPointerUp() {
+      dragIndex = null;
+    }
+    cropHandles.forEach((el) => {
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointermove", onPointerMove);
+      el.addEventListener("pointerup", onPointerUp);
+    });
+
+    function cleanup() {
+      cropHandles.forEach((el) => {
+        el.removeEventListener("pointerdown", onPointerDown);
+        el.removeEventListener("pointermove", onPointerMove);
+        el.removeEventListener("pointerup", onPointerUp);
+      });
+      cropSkipBtn.removeEventListener("click", onSkip);
+      cropConfirmBtn.removeEventListener("click", onConfirm);
+      URL.revokeObjectURL(url);
+    }
+
+    function onSkip() {
+      cleanup();
+      resolve(file);
+    }
+
+    async function onConfirm() {
+      // Corners staan in CSS-pixels t.o.v. cropStage -- omrekenen naar
+      // natuurlijke pixelcoördinaten van de originele foto.
+      const naturalCorners = corners.map((c) => ({
+        x: (c.x - offsetX) / naturalToCss,
+        y: (c.y - offsetY) / naturalToCss,
+      }));
+      cropConfirmBtn.disabled = true;
+      cropConfirmBtn.textContent = "Bezig...";
+      // Laat de "Bezig..."-tekst renderen vóór de (synchrone, zware) warp.
+      await new Promise((r) => setTimeout(r, 30));
+      try {
+        const canvas = warpPerspective(cropImage, naturalCorners);
+        const cropped = await canvasToJpegFile(canvas, file.name, 0.85);
+        cleanup();
+        resolve(cropped);
+      } catch (err) {
+        // Bijsnijden mislukt (zeldzaam) -- gewoon de originele foto
+        // gebruiken i.p.v. de gebruiker vast te laten lopen.
+        cleanup();
+        resolve(file);
+      } finally {
+        cropConfirmBtn.disabled = false;
+        cropConfirmBtn.textContent = "Bijsnijden";
+      }
+    }
+
+    cropSkipBtn.addEventListener("click", onSkip);
+    cropConfirmBtn.addEventListener("click", onConfirm);
+  });
+}
+
+// Toont het controlescherm met wat Claude uit de foto las + de al
+// ingevulde Klant/Medewerker. Lost op met "confirm" of "retry".
+function runConfirmStep(file, extraction, meta) {
+  return new Promise((resolve) => {
+    showWizardStep("confirm");
+    const url = URL.createObjectURL(file);
+    confirmThumb.src = url;
+    const bedrag = typeof extraction.amount === "number"
+      ? extraction.amount.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "?";
+    confirmAmount.textContent = `${bedrag}`;
+    confirmCurrency.textContent = extraction.currency || "?";
+    confirmVendor.textContent = extraction.vendor || "-";
+    confirmDate.textContent = extraction.receiptDate || "-";
+    confirmKlant.textContent = meta.klant || "-";
+    confirmMedewerker.textContent = meta.submittedBy || "-";
+
+    function cleanup() {
+      confirmRetryBtn.removeEventListener("click", onRetry);
+      confirmSubmitBtn.removeEventListener("click", onSubmit);
+      URL.revokeObjectURL(url);
+    }
+    function onRetry() {
+      cleanup();
+      resolve("retry");
+    }
+    function onSubmit() {
+      cleanup();
+      resolve("confirm");
+    }
+    confirmRetryBtn.addEventListener("click", onRetry);
+    confirmSubmitBtn.addEventListener("click", onSubmit);
+  });
+}
+
+// Stuurt Flow 0 aan met de nieuwe, tweefasige "Actie"-contract:
+// "extract" (foto uploaden + laten uitlezen door Claude, geen
+// lijst-item aangemaakt) en "bevestig" (definitief opslaan als item).
+// Zie CLAUDE.md voor het volledige contract dat Flow 0 moet volgen.
+async function extractBonnetje(file, index) {
+  const photoBase64 = await compressImageToBase64(file, 1600, 0.75);
+  const filename = `${Date.now()}_${index}.jpg`;
+  const res = await fetch(CONFIG.flowUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ Actie: "extract", FileName: filename, PhotoBase64: photoBase64 }),
+  });
+  if (!res.ok) throw new Error("serverfout (" + res.status + ")");
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || "extractie mislukt");
+  return { ...data, filename };
+}
+
+async function bevestigBonnetje(extraction, meta) {
+  const res = await fetch(CONFIG.flowUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      Actie: "bevestig",
+      PhotoRef: extraction.photoRef,
+      FileName: extraction.filename,
+      SubmittedBy: meta.submittedBy,
+      SubmittedByEmail: meta.submittedByEmail,
+      Categorie: meta.categorie,
+      Toelichting: meta.toelichting,
+      Klant: meta.klant,
+      Amount: extraction.amount,
+      Currency: extraction.currency,
+      Vendor: extraction.vendor,
+      ReceiptDate: extraction.receiptDate,
+    }),
+  });
+  if (!res.ok) throw new Error("serverfout (" + res.status + ")");
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || "opslaan mislukt");
+}
+
+// Loopt de hele wizard (croppen -> lezen -> controleren -> opslaan) af
+// voor elke foto in `files`. Retourneert welke foto's zijn gelukt en
+// welke niet (met reden), zodat mislukte foto's opnieuw geprobeerd
+// kunnen worden zonder de al gelukte nogmaals te versturen.
+async function runBonWizard(files, meta) {
+  const mislukt = [];
+  let gelukt = 0;
+  wizardOverlay.hidden = false;
+  try {
+    for (let i = 0; i < files.length; i++) {
+      setWizardProgress(files.length > 1 ? `Bonnetje ${i + 1} van ${files.length}` : "Bonnetje");
+      let file = await runCropStep(files[i]);
+
+      let klaar = false;
+      while (!klaar) {
+        showWizardStep("loading");
+        setWizardLoadingText("Bonnetje wordt gelezen...");
+        let extraction;
+        try {
+          extraction = await extractBonnetje(file, i);
+        } catch (err) {
+          mislukt.push(files[i]);
+          setWizardStatus("Kon dit bonnetje niet lezen: " + err.message, "error");
+          await new Promise((r) => setTimeout(r, 1800));
+          klaar = true;
+          break;
+        }
+
+        const actie = await runConfirmStep(file, extraction, meta);
+        if (actie === "retry") {
+          file = await runCropStep(file);
+          continue;
+        }
+
+        showWizardStep("loading");
+        setWizardLoadingText("Bonnetje wordt opgeslagen...");
+        try {
+          await bevestigBonnetje(extraction, meta);
+          gelukt++;
+        } catch (err) {
+          mislukt.push(files[i]);
+          setWizardStatus("Kon dit bonnetje niet opslaan: " + err.message, "error");
+          await new Promise((r) => setTimeout(r, 1800));
+        }
+        klaar = true;
+      }
+    }
+  } finally {
+    wizardOverlay.hidden = true;
+  }
+  return { gelukt, mislukt };
+}
+
 // --- Tabs ---
 const tabButtons = {
   bon: document.getElementById("tabBonBtn"),
@@ -465,43 +879,21 @@ form.addEventListener("submit", async (e) => {
 
   submitBtn.disabled = true;
   const teVersturen = selectedFiles;
-  const opnieuwProberen = [];
-  let gelukt = 0;
+  setStatus("");
 
   try {
-    for (let i = 0; i < teVersturen.length; i++) {
-      const file = teVersturen[i];
-      setStatus(teVersturen.length > 1
-        ? `Bonnetje ${i + 1} van ${teVersturen.length} versturen...`
-        : "Bezig met versturen...");
-      try {
-        const photoBase64 = await compressImageToBase64(file, 1600, 0.7);
-        const res = await fetch(CONFIG.flowUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            SubmittedBy: submittedBy,
-            SubmittedByEmail: submittedByEmail,
-            Categorie: categorieSelect.value,
-            Toelichting: document.getElementById("toelichting").value,
-            Klant: klant,
-            FileName: `${Date.now()}_${i}.jpg`,
-            PhotoBase64: photoBase64,
-          }),
-        });
-        if (!res.ok) throw new Error("serverfout (" + res.status + ")");
-        gelukt++;
-      } catch (err) {
-        // Foto blijft in de lijst staan zodat je 'm zo opnieuw kan
-        // proberen, zonder de al gelukte foto's nogmaals te versturen.
-        opnieuwProberen.push(file);
-      }
-    }
+    const { gelukt, mislukt } = await runBonWizard(teVersturen, {
+      submittedBy,
+      submittedByEmail,
+      categorie: categorieSelect.value,
+      toelichting: document.getElementById("toelichting").value,
+      klant,
+    });
 
-    selectedFiles = opnieuwProberen;
+    selectedFiles = mislukt;
     renderPhotoPreviews();
 
-    if (!opnieuwProberen.length) {
+    if (!mislukt.length) {
       setStatus(gelukt === 1 ? "Bon verstuurd, bedankt!" : `${gelukt} bonnen verstuurd, bedankt!`, "success");
       form.reset();
       fillSelect(wieBenJijSelect, [...CONFIG.employees, "Anders"]);
@@ -514,8 +906,10 @@ form.addEventListener("submit", async (e) => {
       klantAndersWrap.hidden = true;
       klantAndersInput.value = "";
       clearAllPhotos();
+    } else if (gelukt) {
+      setStatus(`${gelukt} van ${teVersturen.length} bonnen verstuurd, ${mislukt.length} mislukt -- probeer de overgebleven foto('s) opnieuw.`, "error");
     } else {
-      setStatus(`${gelukt} van ${teVersturen.length} bonnen verstuurd, ${opnieuwProberen.length} mislukt -- probeer de overgebleven foto('s) opnieuw.`, "error");
+      setStatus("Er ging iets mis -- probeer het opnieuw.", "error");
     }
   } finally {
     submitBtn.disabled = false;
