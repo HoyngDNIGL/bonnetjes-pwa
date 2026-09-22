@@ -475,7 +475,7 @@ function runConfirmStep(file, extraction, meta) {
     const url = URL.createObjectURL(file);
     confirmThumb.src = url;
 
-    confirmAmountInput.value = typeof extraction.amount === "number" ? extraction.amount : "";
+    confirmAmountInput.value = typeof extraction.amount === "number" ? extraction.amount.toFixed(2) : "";
     confirmCurrencyInput.value = (extraction.currency || "").toUpperCase();
     confirmVendorInput.value = extraction.vendor || "";
     confirmDateInput.value = isoToDutchDate(extraction.receiptDate);
@@ -511,9 +511,14 @@ function runConfirmStep(file, extraction, meta) {
       confirmMedewerkerAndersWrap.hidden = !isAnders;
       confirmMedewerkerAndersEmailWrap.hidden = !isAnders;
     }
+    function onAmountBlur() {
+      const n = parseFloat(confirmAmountInput.value.replace(",", "."));
+      if (!isNaN(n)) confirmAmountInput.value = n.toFixed(2);
+    }
     confirmKlantSelect.addEventListener("change", onKlantChange);
     confirmMedewerkerSelect.addEventListener("change", onMedewerkerChange);
     confirmDateInput.addEventListener("input", formatDatumInput);
+    confirmAmountInput.addEventListener("blur", onAmountBlur);
 
     function cleanup() {
       confirmRetryBtn.removeEventListener("click", onRetry);
@@ -521,6 +526,7 @@ function runConfirmStep(file, extraction, meta) {
       confirmKlantSelect.removeEventListener("change", onKlantChange);
       confirmMedewerkerSelect.removeEventListener("change", onMedewerkerChange);
       confirmDateInput.removeEventListener("input", formatDatumInput);
+      confirmAmountInput.removeEventListener("blur", onAmountBlur);
       URL.revokeObjectURL(url);
       wizardCancelHandler = null;
     }
