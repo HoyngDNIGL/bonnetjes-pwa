@@ -71,11 +71,19 @@ body {
   margin-bottom: 28px;
 }
 
-.logo-img {
+.logo-mark {
+  width: 30px;
   height: 30px;
-  width: auto;
-  display: block;
   flex: none;
+  background: var(--blue);
+  -webkit-mask-image: url("dnigl-icon-mask.png");
+  mask-image: url("dnigl-icon-mask.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .logo-divider {
@@ -93,13 +101,6 @@ h1 {
   letter-spacing: -0.02em;
   line-height: 1.2;
   margin: 0;
-}
-
-.subtitle {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: var(--muted);
-  letter-spacing: 0.01em;
 }
 
 .tabs {
