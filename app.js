@@ -361,6 +361,9 @@ const confirmAmountInput = document.getElementById("confirmAmountInput");
 const confirmCurrencyInput = document.getElementById("confirmCurrencyInput");
 const confirmVendorInput = document.getElementById("confirmVendorInput");
 const confirmDateInput = document.getElementById("confirmDateInput");
+const confirmCategorieSelect = document.getElementById("confirmCategorieSelect");
+const confirmToelichtingWrap = document.getElementById("confirmToelichtingWrap");
+const confirmToelichtingInput = document.getElementById("confirmToelichtingInput");
 const confirmKlantSelect = document.getElementById("confirmKlantSelect");
 const confirmKlantAndersWrap = document.getElementById("confirmKlantAndersWrap");
 const confirmKlantAndersInput = document.getElementById("confirmKlantAndersInput");
@@ -634,6 +637,11 @@ function runConfirmStep(file, extraction, meta) {
     confirmVendorInput.value = extraction.vendor || "";
     confirmDateInput.value = isoToDutchDate(extraction.receiptDate);
 
+    fillSelect(confirmCategorieSelect, CONFIG.categories);
+    confirmCategorieSelect.value = CONFIG.categories.includes(meta.categorie) ? meta.categorie : CONFIG.categories[0];
+    confirmToelichtingWrap.hidden = confirmCategorieSelect.value !== "Anders";
+    confirmToelichtingInput.value = meta.toelichting || "";
+
     fillSelect(confirmKlantSelect, [...CONFIG.clients, "Anders"]);
     if (CONFIG.clients.includes(meta.klant)) {
       confirmKlantSelect.value = meta.klant;
@@ -657,6 +665,9 @@ function runConfirmStep(file, extraction, meta) {
       confirmMedewerkerAndersEmailWrap.hidden = false;
     }
 
+    function onCategorieChange() {
+      confirmToelichtingWrap.hidden = confirmCategorieSelect.value !== "Anders";
+    }
     function onKlantChange() {
       confirmKlantAndersWrap.hidden = confirmKlantSelect.value !== "Anders";
     }
@@ -669,6 +680,7 @@ function runConfirmStep(file, extraction, meta) {
       const n = parseFloat(confirmAmountInput.value.replace(",", "."));
       if (!isNaN(n)) confirmAmountInput.value = n.toFixed(2);
     }
+    confirmCategorieSelect.addEventListener("change", onCategorieChange);
     confirmKlantSelect.addEventListener("change", onKlantChange);
     confirmMedewerkerSelect.addEventListener("change", onMedewerkerChange);
     confirmDateInput.addEventListener("input", formatDatumInput);
@@ -677,6 +689,7 @@ function runConfirmStep(file, extraction, meta) {
     function cleanup() {
       confirmRetryBtn.removeEventListener("click", onRetry);
       confirmSubmitBtn.removeEventListener("click", onSubmit);
+      confirmCategorieSelect.removeEventListener("change", onCategorieChange);
       confirmKlantSelect.removeEventListener("change", onKlantChange);
       confirmMedewerkerSelect.removeEventListener("change", onMedewerkerChange);
       confirmDateInput.removeEventListener("input", formatDatumInput);
@@ -707,6 +720,8 @@ function runConfirmStep(file, extraction, meta) {
         setWizardStatus("Vul een geldige datum in (dd-mm-jjjj).", "error");
         return;
       }
+      const categorie = confirmCategorieSelect.value;
+      const toelichting = categorie === "Anders" ? confirmToelichtingInput.value.trim() : "";
       const klant = resolveWithAnders(confirmKlantSelect, confirmKlantAndersInput);
       if (!klant) {
         setWizardStatus("Vul de klantnaam in.", "error");
@@ -730,6 +745,8 @@ function runConfirmStep(file, extraction, meta) {
           currency,
           vendor: confirmVendorInput.value.trim(),
           receiptDate: datum.iso,
+          categorie,
+          toelichting,
           klant,
           submittedBy,
           submittedByEmail,
@@ -763,10 +780,10 @@ async function extractBonnetje(file, index) {
 
 // `values` komt uit het controlescherm (runConfirmStep) -- dat is de
 // bewerkbare, eventueel door de gebruiker gecorrigeerde versie van wat
-// Claude las, dus dit is wat er daadwerkelijk wordt opgeslagen (niet de
-// ruwe `extraction`). Categorie/Toelichting zijn op het controlescherm
-// niet bewerkbaar, die komen nog uit het hoofdformulier (`meta`).
-async function bevestigBonnetje(extraction, values, meta) {
+// Claude las én van Categorie/Toelichting/Klant/Medewerker uit het
+// hoofdformulier, dus dit is wat er daadwerkelijk wordt opgeslagen (niet
+// de ruwe `extraction`, en niet de oorspronkelijke `meta`).
+async function bevestigBonnetje(extraction, values) {
   const res = await fetch(CONFIG.flowUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -776,8 +793,8 @@ async function bevestigBonnetje(extraction, values, meta) {
       FileName: extraction.filename,
       SubmittedBy: values.submittedBy,
       SubmittedByEmail: values.submittedByEmail,
-      Categorie: meta.categorie,
-      Toelichting: meta.toelichting,
+      Categorie: values.categorie,
+      Toelichting: values.toelichting,
       Klant: values.klant,
       Amount: values.amount,
       Currency: values.currency,
@@ -847,7 +864,7 @@ async function runBonWizard(files, meta) {
         showWizardStep("loading");
         setWizardLoadingText("Bonnetje wordt opgeslagen...");
         try {
-          await bevestigBonnetje(extraction, values, meta);
+          await bevestigBonnetje(extraction, values);
           gelukt++;
         } catch (err) {
           mislukt.push(files[i]);

@@ -979,3 +979,34 @@ button#uitbetaalSubmitBtn:disabled {
   background: var(--paper-2);
   box-shadow: 0 0 0 2px rgba(30, 127, 216, 0.25);
 }
+
+/* Toelichting is een vrije-tekst-veld i.p.v. een korte waarde --
+   daarom onder het label i.p.v. ernaast, net als in het hoofdformulier. */
+#confirmToelichtingWrap {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+#confirmToelichtingWrap label {
+  text-align: left;
+}
+
+#confirmToelichtingInput {
+  width: 100%;
+  text-align: left;
+  font-weight: 500;
+  font-size: 14px;
+  font-family: var(--text);
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+#confirmToelichtingInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(30, 127, 216, 0.25);
+}
