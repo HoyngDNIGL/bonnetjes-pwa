@@ -22,7 +22,39 @@ const klantAndersInput = document.getElementById("klantAnders");
 let selectedFiles = [];
 let photoPreviewUrls = [];
 
+function isPdfFile(file) {
+  return file.type === "application/pdf";
+}
+
+// Rendert pagina 1 van een PDF naar een JPEG-thumbnail (data-URL), voor
+// gebruik in een <img> net als bij een foto. pdf.js wordt pas on-demand
+// geladen (zie index.html, window.pdfjsReadyPromise) zodat de PWA licht
+// blijft zolang niemand een PDF kiest.
+async function renderPdfThumbnail(file, maxDim) {
+  const pdfjsLib = await window.pdfjsReadyPromise;
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const page = await pdf.getPage(1);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const scale = maxDim / Math.max(baseViewport.width, baseViewport.height);
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+// Verhoogd bij elke renderPhotoPreviews-aanroep -- zo kan een nog lopende
+// async PDF-render (hieronder) zichzelf herkennen als verouderd wanneer de
+// lijst intussen is aangepast (bestand verwijderd/opnieuw gekozen) en zich
+// stilhouden, i.p.v. een placeholder van een inmiddels andere foto/PDF te
+// overschrijven.
+let previewGeneration = 0;
+
 function renderPhotoPreviews() {
+  const generation = ++previewGeneration;
+
   photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
   photoPreviewUrls = [];
 
@@ -33,20 +65,45 @@ function renderPhotoPreviews() {
     return;
   }
 
-  photoHint.textContent = "Andere foto('s) kiezen";
+  photoHint.textContent = "Andere foto('s)/PDF('s) kiezen";
   photoConfirm.hidden = false;
   photoConfirm.innerHTML = selectedFiles.map((file, i) => {
-    const url = URL.createObjectURL(file);
-    photoPreviewUrls.push(url);
+    let thumbHtml;
+    if (isPdfFile(file)) {
+      thumbHtml = `<div class="photo-thumb photo-thumb-pdf" data-pdf-thumb="${i}" aria-hidden="true">PDF</div>`;
+    } else {
+      const url = URL.createObjectURL(file);
+      photoPreviewUrls.push(url);
+      thumbHtml = `<img src="${url}" alt="" class="photo-thumb">`;
+    }
     return `
       <div class="photo-confirm-item">
-        <img src="${url}" alt="" class="photo-thumb">
+        ${thumbHtml}
         <span class="photo-check">&#10003;</span>
         <span class="photo-filename">${escapeHtml(file.name)}</span>
         <button type="button" class="photo-remove" data-index="${i}" aria-label="Foto verwijderen">&times;</button>
       </div>
     `;
   }).join("");
+
+  selectedFiles.forEach((file, i) => {
+    if (!isPdfFile(file)) return;
+    renderPdfThumbnail(file, 84)
+      .then((dataUrl) => {
+        if (generation !== previewGeneration) return;
+        const placeholder = photoConfirm.querySelector(`[data-pdf-thumb="${i}"]`);
+        if (!placeholder) return;
+        const img = document.createElement("img");
+        img.src = dataUrl;
+        img.alt = "";
+        img.className = "photo-thumb";
+        placeholder.replaceWith(img);
+      })
+      .catch(() => {
+        // Kon geen voorbeeld renderen (zeldzaam, bv. een corrupte PDF) --
+        // de "PDF"-placeholder blijft gewoon staan als terugval.
+      });
+  });
 }
 
 function clearAllPhotos() {
@@ -120,6 +177,18 @@ function resolveWithAnders(select, andersInput) {
 function resolveSubmittedByEmail(select, andersEmailInput) {
   if (select.value === "Anders") return andersEmailInput.value.trim();
   return CONFIG.employeeEmails[select.value] || "";
+}
+
+// Leest een bestand (gebruikt voor PDF's) rechtstreeks in als base64 --
+// geen canvas-herschaling/compressie mogelijk voor een PDF zoals bij een
+// foto, dus de originele bytes gaan gewoon door.
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = () => reject(new Error("kon bestand niet lezen"));
+    reader.readAsDataURL(file);
+  });
 }
 
 // Resizes to maxDim on the long edge and returns just the base64 payload
@@ -287,6 +356,7 @@ const cropSkipBtn = document.getElementById("cropSkipBtn");
 const cropConfirmBtn = document.getElementById("cropConfirmBtn");
 const wizardLoadingText = document.getElementById("wizardLoadingText");
 const confirmThumb = document.getElementById("confirmThumb");
+const confirmThumbPdf = document.getElementById("confirmThumbPdf");
 const confirmAmountInput = document.getElementById("confirmAmountInput");
 const confirmCurrencyInput = document.getElementById("confirmCurrencyInput");
 const confirmVendorInput = document.getElementById("confirmVendorInput");
@@ -351,6 +421,9 @@ function renderCropHandles(corners) {
 // (evt.) bijgesneden bestand zodra de gebruiker bevestigt of overslaat,
 // of met `null` als de hele wizard geannuleerd wordt.
 function runCropStep(file) {
+  // Perspectief-correctie werkt alleen op een afbeelding (canvas/<img>) --
+  // een PDF slaat deze stap gewoon over, alsof "Niet bijsnijden" is gekozen.
+  if (isPdfFile(file)) return Promise.resolve(file);
   return new Promise((resolve) => {
     showWizardStep("crop");
     wizardCancelHandler = () => {
@@ -472,8 +545,30 @@ function runConfirmStep(file, extraction, meta) {
       cleanup();
       resolve({ actie: "cancel" });
     };
-    const url = URL.createObjectURL(file);
-    confirmThumb.src = url;
+    let url = null;
+    let cancelled = false;
+    if (isPdfFile(file)) {
+      // Toon eerst de bestandsnaam als terugval, en vervang die zodra
+      // pdf.js pagina 1 heeft gerenderd naar een echte voorbeeldafbeelding.
+      confirmThumb.hidden = true;
+      confirmThumbPdf.hidden = false;
+      confirmThumbPdf.textContent = file.name;
+      renderPdfThumbnail(file, 480)
+        .then((dataUrl) => {
+          if (cancelled) return;
+          confirmThumb.src = dataUrl;
+          confirmThumb.hidden = false;
+          confirmThumbPdf.hidden = true;
+        })
+        .catch(() => {
+          // Kon geen voorbeeld renderen -- de bestandsnaam-terugval blijft staan.
+        });
+    } else {
+      url = URL.createObjectURL(file);
+      confirmThumb.hidden = false;
+      confirmThumbPdf.hidden = true;
+      confirmThumb.src = url;
+    }
 
     confirmAmountInput.value = typeof extraction.amount === "number" ? extraction.amount.toFixed(2) : "";
     confirmCurrencyInput.value = (extraction.currency || "").toUpperCase();
@@ -527,7 +622,8 @@ function runConfirmStep(file, extraction, meta) {
       confirmMedewerkerSelect.removeEventListener("change", onMedewerkerChange);
       confirmDateInput.removeEventListener("input", formatDatumInput);
       confirmAmountInput.removeEventListener("blur", onAmountBlur);
-      URL.revokeObjectURL(url);
+      if (url) URL.revokeObjectURL(url);
+      cancelled = true;
       wizardCancelHandler = null;
     }
     function onRetry() {
@@ -589,12 +685,14 @@ function runConfirmStep(file, extraction, meta) {
 // lijst-item aangemaakt) en "bevestig" (definitief opslaan als item).
 // Zie CLAUDE.md voor het volledige contract dat Flow 0 moet volgen.
 async function extractBonnetje(file, index) {
-  const photoBase64 = await compressImageToBase64(file, 1600, 0.75);
-  const filename = `${Date.now()}_${index}.jpg`;
+  const pdf = isPdfFile(file);
+  const photoBase64 = pdf ? await fileToBase64(file) : await compressImageToBase64(file, 1600, 0.75);
+  const contentType = pdf ? "application/pdf" : "image/jpeg";
+  const filename = `${Date.now()}_${index}.${pdf ? "pdf" : "jpg"}`;
   const res = await fetch(CONFIG.flowUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ Actie: "extract", FileName: filename, PhotoBase64: photoBase64 }),
+    body: JSON.stringify({ Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType }),
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
   const data = await res.json();
