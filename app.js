@@ -372,6 +372,50 @@ const confirmMedewerkerAndersEmailInput = document.getElementById("confirmMedewe
 const confirmRetryBtn = document.getElementById("confirmRetryBtn");
 const confirmSubmitBtn = document.getElementById("confirmSubmitBtn");
 const wizardCancelBtn = document.getElementById("wizardCancelBtn");
+const confirmZoomBtn = document.getElementById("confirmZoomBtn");
+
+// --- Zoomweergave (foto/PDF-voorbeeld groter bekijken) ---
+// Native pinch-to-zoom doet het werk op een telefoon (zie de
+// touch-action-regels in style.css); de +/- knoppen zijn er voor pc,
+// waar niemand een trackpad-knijpgebaar verwacht te moeten gebruiken.
+const zoomOverlay = document.getElementById("zoomOverlay");
+const zoomStage = document.getElementById("zoomStage");
+const zoomImage = document.getElementById("zoomImage");
+const zoomInBtn = document.getElementById("zoomInBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomResetBtn = document.getElementById("zoomResetBtn");
+const zoomCloseBtn = document.getElementById("zoomCloseBtn");
+
+let zoomScale = 1;
+
+function setZoomScale(scale) {
+  zoomScale = Math.min(5, Math.max(1, scale));
+  zoomImage.style.transform = `scale(${zoomScale})`;
+}
+
+function openZoom(src) {
+  zoomImage.src = src;
+  zoomScale = 1;
+  zoomImage.style.transform = "scale(1)";
+  zoomOverlay.hidden = false;
+  requestAnimationFrame(() => {
+    zoomStage.scrollTop = 0;
+    zoomStage.scrollLeft = 0;
+  });
+}
+
+function closeZoom() {
+  zoomOverlay.hidden = true;
+  zoomImage.src = "";
+}
+
+zoomInBtn.addEventListener("click", () => setZoomScale(zoomScale + 0.5));
+zoomOutBtn.addEventListener("click", () => setZoomScale(zoomScale - 0.5));
+zoomResetBtn.addEventListener("click", () => setZoomScale(1));
+zoomCloseBtn.addEventListener("click", closeZoom);
+zoomOverlay.addEventListener("click", (e) => {
+  if (e.target === zoomOverlay) closeZoom();
+});
 
 // Eén gedeelde annuleer-knop voor de hele wizard (crop- én
 // controlestap): wie 'm indrukt breekt het hele indienproces af, niet
@@ -547,13 +591,27 @@ function runConfirmStep(file, extraction, meta) {
     };
     let url = null;
     let cancelled = false;
+    // Voor een PDF wordt de scherpe, hoge-resolutie-render (voor de
+    // zoomweergave) pas on-demand gemaakt bij de eerste klik op de
+    // zoomknop, en daarna hergebruikt -- de standaardpreview blijft klein
+    // voor snelheid, de zoom-versie mag zwaarder zijn.
+    let pdfHighResPromise = null;
+    function onZoomClick() {
+      if (isPdfFile(file)) {
+        if (!pdfHighResPromise) pdfHighResPromise = renderPdfThumbnail(file, 2000);
+        pdfHighResPromise.then((dataUrl) => openZoom(dataUrl)).catch(() => {});
+      } else if (url) {
+        openZoom(url);
+      }
+    }
+
     if (isPdfFile(file)) {
       // Toon eerst de bestandsnaam als terugval, en vervang die zodra
       // pdf.js pagina 1 heeft gerenderd naar een echte voorbeeldafbeelding.
       confirmThumb.hidden = true;
       confirmThumbPdf.hidden = false;
       confirmThumbPdf.textContent = file.name;
-      renderPdfThumbnail(file, 480)
+      renderPdfThumbnail(file, 900)
         .then((dataUrl) => {
           if (cancelled) return;
           confirmThumb.src = dataUrl;
@@ -569,6 +627,7 @@ function runConfirmStep(file, extraction, meta) {
       confirmThumbPdf.hidden = true;
       confirmThumb.src = url;
     }
+    confirmZoomBtn.addEventListener("click", onZoomClick);
 
     confirmAmountInput.value = typeof extraction.amount === "number" ? extraction.amount.toFixed(2) : "";
     confirmCurrencyInput.value = (extraction.currency || "").toUpperCase();
@@ -622,8 +681,10 @@ function runConfirmStep(file, extraction, meta) {
       confirmMedewerkerSelect.removeEventListener("change", onMedewerkerChange);
       confirmDateInput.removeEventListener("input", formatDatumInput);
       confirmAmountInput.removeEventListener("blur", onAmountBlur);
+      confirmZoomBtn.removeEventListener("click", onZoomClick);
       if (url) URL.revokeObjectURL(url);
       cancelled = true;
+      closeZoom();
       wizardCancelHandler = null;
     }
     function onRetry() {

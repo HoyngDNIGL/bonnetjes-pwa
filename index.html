@@ -202,8 +202,11 @@
       </div>
 
       <div class="wizard-step" id="stepConfirm" hidden>
-        <img id="confirmThumb" class="confirm-thumb" alt="">
-        <div id="confirmThumbPdf" class="confirm-thumb confirm-thumb-pdf" hidden></div>
+        <div class="confirm-thumb-wrap" id="confirmThumbWrap">
+          <img id="confirmThumb" class="confirm-thumb" alt="">
+          <div id="confirmThumbPdf" class="confirm-thumb confirm-thumb-pdf" hidden></div>
+          <button type="button" class="zoom-btn-overlay" id="confirmZoomBtn" aria-label="Inzoomen op bonnetje">&#128269;</button>
+        </div>
         <div class="confirm-amount-row">
           <input type="number" step="0.01" inputmode="decimal" id="confirmAmountInput" class="confirm-amount-input" aria-label="Bedrag">
           <input type="text" maxlength="3" id="confirmCurrencyInput" class="confirm-currency-input" aria-label="Valuta">
@@ -247,6 +250,19 @@
 
       <p class="status-msg" id="wizardStatusMsg" role="status" aria-live="polite"></p>
     </div>
+  </div>
+
+  <div class="zoom-overlay" id="zoomOverlay" hidden>
+    <div class="zoom-toolbar">
+      <button type="button" class="zoom-ctrl-btn" id="zoomOutBtn" aria-label="Uitzoomen">&minus;</button>
+      <button type="button" class="zoom-ctrl-btn" id="zoomResetBtn" aria-label="Zoom resetten">1:1</button>
+      <button type="button" class="zoom-ctrl-btn" id="zoomInBtn" aria-label="Inzoomen">&plus;</button>
+      <button type="button" class="zoom-ctrl-btn zoom-close-btn" id="zoomCloseBtn" aria-label="Sluiten">&times;</button>
+    </div>
+    <div class="zoom-stage" id="zoomStage">
+      <img id="zoomImage" class="zoom-image" alt="">
+    </div>
+    <p class="zoom-hint">Op je telefoon: knijp om in/uit te zoomen. Op de pc: gebruik de knoppen hierboven.</p>
   </div>
 
   <script type="module">

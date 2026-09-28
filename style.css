@@ -786,6 +786,94 @@ button#uitbetaalSubmitBtn:disabled {
   color: var(--muted);
 }
 
+.confirm-thumb-wrap {
+  position: relative;
+}
+
+.zoom-btn-overlay {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* --- Zoomweergave (foto/PDF-voorbeeld groter bekijken) --- */
+
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(10, 10, 10, 0.94);
+  display: flex;
+  flex-direction: column;
+}
+
+.zoom-toolbar {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.zoom-ctrl-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.zoom-close-btn {
+  margin-left: 10px;
+  font-size: 22px;
+}
+
+.zoom-stage {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pinch-zoom pan-x pan-y;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.zoom-image {
+  max-width: 100%;
+  max-height: 100%;
+  touch-action: pinch-zoom pan-x pan-y;
+  transform-origin: center center;
+  transition: transform 0.15s ease;
+}
+
+.zoom-hint {
+  flex: none;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  padding: 4px 14px 14px;
+}
+
 .confirm-amount-row {
   display: flex;
   align-items: baseline;
