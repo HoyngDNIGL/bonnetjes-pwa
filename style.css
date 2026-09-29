@@ -1010,3 +1010,72 @@ button#uitbetaalSubmitBtn:disabled {
   outline: none;
   box-shadow: 0 0 0 2px rgba(30, 127, 216, 0.25);
 }
+
+/* Foto maken + kiezen naast elkaar */
+.photo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.photo-actions .photo-hint {
+  min-height: 76px;
+  padding: 16px 10px;
+}
+
+/* Toegangscode (bovenop de wizard) */
+.toegang-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 32, 0.6);
+}
+
+.toegang-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.toegang-card h2 {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 20px;
+  color: var(--ink);
+}
+
+.toegang-uitleg {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.toegang-card input[type="password"] {
+  width: 100%;
+}
+
+.toegang-card .btn-wizard-primary {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.toegang-wijzig {
+  margin: 24px 0 16px;
+  text-align: center;
+}
+
+.toegang-wijzig button {
+  border: 0;
+  background: none;
+  color: var(--caption);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}

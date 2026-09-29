@@ -53,9 +53,15 @@
 
         <div class="field">
           <label for="photo">Foto('s) of PDF('s) van de bon</label>
-          <div class="photo-input">
-            <input type="file" id="photo" accept="image/*,application/pdf" multiple required>
-            <span class="photo-hint" id="photoHint">Tik om een of meerdere foto's/PDF's te maken of te kiezen</span>
+          <div class="photo-actions">
+            <div class="photo-input">
+              <input type="file" id="photoCamera" accept="image/*" capture="environment" aria-label="Foto maken met de camera">
+              <span class="photo-hint" id="photoCameraHint">Foto maken</span>
+            </div>
+            <div class="photo-input">
+              <input type="file" id="photo" accept="image/*,application/pdf" multiple aria-label="Foto's of PDF's kiezen uit de bibliotheek">
+              <span class="photo-hint" id="photoHint">Kiezen uit bibliotheek / PDF</span>
+            </div>
           </div>
           <div class="photo-confirm-list" id="photoConfirm" hidden></div>
         </div>
@@ -259,6 +265,18 @@
       <p class="status-msg" id="wizardStatusMsg" role="status" aria-live="polite"></p>
     </div>
   </div>
+
+  <div class="toegang-overlay" id="toegangOverlay" hidden>
+    <form class="toegang-card" id="toegangForm" autocomplete="off">
+      <h2>Toegangscode</h2>
+      <p class="toegang-uitleg">Vul de toegangscode in die je van DNIGL hebt gekregen. Dat hoeft maar één keer per apparaat.</p>
+      <input type="password" id="toegangInput" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Toegangscode">
+      <p class="status-msg" id="toegangFout" role="alert" aria-live="assertive"></p>
+      <button type="submit" class="btn-wizard-primary" id="toegangKnop">Doorgaan</button>
+    </form>
+  </div>
+
+  <p class="toegang-wijzig"><button type="button" id="toegangWijzigBtn">Toegangscode wijzigen</button></p>
 
   <div class="zoom-overlay" id="zoomOverlay" hidden>
     <div class="zoom-toolbar">

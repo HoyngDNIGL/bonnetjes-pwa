@@ -7,6 +7,8 @@ const submitBtn = document.getElementById("submitBtn");
 const statusMsg = document.getElementById("statusMsg");
 const photoInput = document.getElementById("photo");
 const photoHint = document.getElementById("photoHint");
+const photoCameraInput = document.getElementById("photoCamera");
+const photoCameraHint = document.getElementById("photoCameraHint");
 const photoConfirm = document.getElementById("photoConfirm");
 const wieBenJijAndersWrap = document.getElementById("wieBenJijAndersWrap");
 const wieBenJijAndersInput = document.getElementById("wieBenJijAnders");
@@ -61,11 +63,13 @@ function renderPhotoPreviews() {
   if (!selectedFiles.length) {
     photoConfirm.hidden = true;
     photoConfirm.innerHTML = "";
-    photoHint.textContent = "Tik om een of meerdere foto's te maken of te kiezen";
+    photoHint.textContent = "Kiezen uit bibliotheek / PDF";
+    photoCameraHint.textContent = "Foto maken";
     return;
   }
 
-  photoHint.textContent = "Andere foto('s)/PDF('s) kiezen";
+  photoHint.textContent = "Meer kiezen uit bibliotheek / PDF";
+  photoCameraHint.textContent = "Nog een foto maken";
   photoConfirm.hidden = false;
   photoConfirm.innerHTML = selectedFiles.map((file, i) => {
     let thumbHtml;
@@ -109,12 +113,33 @@ function renderPhotoPreviews() {
 function clearAllPhotos() {
   selectedFiles = [];
   photoInput.value = "";
+  photoCameraInput.value = "";
+  renderPhotoPreviews();
+}
+
+// Nieuwe foto's komen bij de lijst (i.p.v. de lijst te vervangen), zodat je
+// achter elkaar meerdere foto's kunt maken of kiezen. De cameraknop levert
+// per keer één foto (zo werkt de camera van een telefoon in een browser),
+// dus "Nog een foto maken" is gewoon opnieuw tikken.
+function voegBestandenToe(lijst) {
+  const sleutel = (f) => [f.name, f.size, f.lastModified].join("|");
+  const bekend = new Set(selectedFiles.map(sleutel));
+  Array.from(lijst).forEach((file) => {
+    if (bekend.has(sleutel(file))) return;
+    bekend.add(sleutel(file));
+    selectedFiles.push(file);
+  });
   renderPhotoPreviews();
 }
 
 photoInput.addEventListener("change", () => {
-  selectedFiles = Array.from(photoInput.files);
-  renderPhotoPreviews();
+  voegBestandenToe(photoInput.files);
+  photoInput.value = "";
+});
+
+photoCameraInput.addEventListener("change", () => {
+  voegBestandenToe(photoCameraInput.files);
+  photoCameraInput.value = "";
 });
 
 photoConfirm.addEventListener("click", (e) => {
@@ -122,6 +147,96 @@ photoConfirm.addEventListener("click", (e) => {
   if (!btn) return;
   selectedFiles.splice(parseInt(btn.dataset.index, 10), 1);
   renderPhotoPreviews();
+});
+
+// --- Toegangscode ---
+// De flow-URL's staan (onvermijdelijk) in het publieke config.js. Wat een
+// buitenstaander tegenhoudt is deze code: hij staat NIET in de broncode,
+// elke medewerker typt hem één keer per apparaat in, de PWA stuurt hem bij
+// elke aanroep mee en elke flow controleert hem als eerste stap (fout ->
+// HTTP 401). Klopt hij niet (bv. code gewijzigd), dan vragen we opnieuw.
+const TOEGANG_SLEUTEL = "bonnetjes_toegangscode";
+const toegangOverlay = document.getElementById("toegangOverlay");
+const toegangForm = document.getElementById("toegangForm");
+const toegangInput = document.getElementById("toegangInput");
+const toegangFout = document.getElementById("toegangFout");
+const toegangWijzigBtn = document.getElementById("toegangWijzigBtn");
+let toegangGeheugen = "";
+let toegangWachtend = null;
+
+function leesToegangscode() {
+  try {
+    return localStorage.getItem(TOEGANG_SLEUTEL) || toegangGeheugen;
+  } catch (err) {
+    return toegangGeheugen;
+  }
+}
+
+function bewaarToegangscode(code) {
+  toegangGeheugen = code;
+  try {
+    localStorage.setItem(TOEGANG_SLEUTEL, code);
+  } catch (err) {
+    // Opslag geblokkeerd (bv. privévenster): de code blijft dan alleen in het geheugen.
+  }
+}
+
+function wisToegangscode() {
+  toegangGeheugen = "";
+  try {
+    localStorage.removeItem(TOEGANG_SLEUTEL);
+  } catch (err) {
+    // Niets te wissen als opslag geblokkeerd is.
+  }
+}
+
+function vraagToegangscode(foutTekst) {
+  if (toegangWachtend) return toegangWachtend;
+  toegangWachtend = new Promise((resolve) => {
+    toegangFout.textContent = foutTekst || "";
+    toegangFout.dataset.state = foutTekst ? "error" : "";
+    toegangInput.value = "";
+    toegangOverlay.hidden = false;
+    toegangInput.focus();
+    toegangForm.onsubmit = (e) => {
+      e.preventDefault();
+      const code = toegangInput.value.trim();
+      if (!code) {
+        toegangFout.textContent = "Vul de toegangscode in.";
+        toegangFout.dataset.state = "error";
+        return;
+      }
+      toegangOverlay.hidden = true;
+      bewaarToegangscode(code);
+      toegangWachtend = null;
+      resolve(code);
+    };
+  });
+  return toegangWachtend;
+}
+
+// Enige route naar de flows: voegt de toegangscode toe en vraagt hem opnieuw
+// als de flow hem weigert (401).
+async function flowFetch(url, body) {
+  let fout = "";
+  for (let poging = 0; poging < 3; poging++) {
+    let code = leesToegangscode();
+    if (!code) code = await vraagToegangscode(fout);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, Toegangscode: code }),
+    });
+    if (res.status !== 401) return res;
+    wisToegangscode();
+    fout = "Onjuiste toegangscode, probeer het opnieuw.";
+  }
+  throw new Error("geen toegang (onjuiste toegangscode)");
+}
+
+toegangWijzigBtn.addEventListener("click", () => {
+  wisToegangscode();
+  vraagToegangscode("");
 });
 
 function setStatus(text, state) {
@@ -776,10 +891,8 @@ async function extractBonnetje(file, index) {
       previewBase64 = "";
     }
   }
-  const res = await fetch(CONFIG.flowUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType, PreviewBase64: previewBase64 }),
+  const res = await flowFetch(CONFIG.flowUrl, {
+    Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType, PreviewBase64: previewBase64,
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
   const data = await res.json();
@@ -793,24 +906,20 @@ async function extractBonnetje(file, index) {
 // hoofdformulier, dus dit is wat er daadwerkelijk wordt opgeslagen (niet
 // de ruwe `extraction`, en niet de oorspronkelijke `meta`).
 async function bevestigBonnetje(extraction, values) {
-  const res = await fetch(CONFIG.flowUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      Actie: "bevestig",
-      PhotoRef: extraction.photoRef,
-      PreviewRef: extraction.previewRef || "",
-      FileName: extraction.filename,
-      SubmittedBy: values.submittedBy,
-      SubmittedByEmail: values.submittedByEmail,
-      Categorie: values.categorie,
-      Toelichting: values.toelichting,
-      Klant: values.klant,
-      Amount: values.amount,
-      Currency: values.currency,
-      Vendor: values.vendor,
-      ReceiptDate: values.receiptDate,
-    }),
+  const res = await flowFetch(CONFIG.flowUrl, {
+    Actie: "bevestig",
+    PhotoRef: extraction.photoRef,
+    PreviewRef: extraction.previewRef || "",
+    FileName: extraction.filename,
+    SubmittedBy: values.submittedBy,
+    SubmittedByEmail: values.submittedByEmail,
+    Categorie: values.categorie,
+    Toelichting: values.toelichting,
+    Klant: values.klant,
+    Amount: values.amount,
+    Currency: values.currency,
+    Vendor: values.vendor,
+    ReceiptDate: values.receiptDate,
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
   const data = await res.json();
@@ -1031,16 +1140,12 @@ overzichtForm.addEventListener("submit", async (e) => {
   overzichtSubmitBtn.disabled = true;
   const stopVoortgang = startOverzichtVoortgang();
   try {
-    const res = await fetch(CONFIG.overviewFlowUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        Startdatum: startdatum.iso,
-        Einddatum: einddatum.iso,
-        Medewerker: filterType === "medewerker" ? medewerkerSelect.value : "",
-        Klant: filterType === "klant" ? overzichtKlantSelect.value : "",
-        Email: emailInput.value,
-      }),
+    const res = await flowFetch(CONFIG.overviewFlowUrl, {
+      Startdatum: startdatum.iso,
+      Einddatum: einddatum.iso,
+      Medewerker: filterType === "medewerker" ? medewerkerSelect.value : "",
+      Klant: filterType === "klant" ? overzichtKlantSelect.value : "",
+      Email: emailInput.value,
     });
 
     if (!res.ok) throw new Error("serverfout (" + res.status + ")");
@@ -1088,7 +1193,7 @@ async function laadBonnetjesLijst() {
     return;
   }
   try {
-    const res = await fetch(CONFIG.listFlowUrl, { method: "POST" });
+    const res = await flowFetch(CONFIG.listFlowUrl, {});
     if (!res.ok) throw new Error("serverfout (" + res.status + ")");
     const items = await res.json();
     if (!items.length) {
@@ -1175,11 +1280,7 @@ uitbetaalSubmitBtn.addEventListener("click", async () => {
   uitbetaalStatusMsg.textContent = "Uitbetaalronde wordt gestart...";
   delete uitbetaalStatusMsg.dataset.state;
   try {
-    const res = await fetch(CONFIG.flow4Url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ItemIds: geselecteerdeIds }),
-    });
+    const res = await flowFetch(CONFIG.flow4Url, { ItemIds: geselecteerdeIds });
     if (!res.ok) throw new Error("serverfout (" + res.status + ")");
     uitbetaalStatusMsg.textContent = "Uitbetaalronde gestart -- je ontvangt zo het overzicht per e-mail.";
     uitbetaalStatusMsg.dataset.state = "success";
