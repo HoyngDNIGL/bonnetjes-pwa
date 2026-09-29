@@ -905,7 +905,38 @@ async function extractBonnetje(file, index) {
 // Claude las én van Categorie/Toelichting/Klant/Medewerker uit het
 // hoofdformulier, dus dit is wat er daadwerkelijk wordt opgeslagen (niet
 // de ruwe `extraction`, en niet de oorspronkelijke `meta`).
-async function bevestigBonnetje(extraction, values) {
+const dubbelOverlay = document.getElementById("dubbelOverlay");
+const dubbelTekst = document.getElementById("dubbelTekst");
+const dubbelJaBtn = document.getElementById("dubbelJaBtn");
+const dubbelNeeBtn = document.getElementById("dubbelNeeBtn");
+
+// Toont "Mogelijk dubbele bon" met wat de flow terugkreeg over de eerdere
+// bon. Resolveert naar true als de gebruiker het toch wil indienen.
+function vraagDubbel(dubbel, values) {
+  const bedrag = Number(values.amount).toFixed(2).replace(".", ",");
+  const eerder = [];
+  if (dubbel.vendor) eerder.push(dubbel.vendor);
+  if (dubbel.submittedBy) eerder.push("door " + dubbel.submittedBy);
+  if (dubbel.created) eerder.push("op " + isoToDutchDate(String(dubbel.created).slice(0, 10)));
+  dubbelTekst.textContent =
+    `Er is al een bon met dezelfde datum (${isoToDutchDate(values.receiptDate)}) en hetzelfde bedrag (${values.currency} ${bedrag}) ingediend` +
+    (eerder.length ? ` (${eerder.join(", ")})` : "") + ". Wil je deze toch indienen?";
+  dubbelOverlay.hidden = false;
+  return new Promise((resolve) => {
+    function klaar(antwoord) {
+      dubbelOverlay.hidden = true;
+      dubbelJaBtn.removeEventListener("click", ja);
+      dubbelNeeBtn.removeEventListener("click", nee);
+      resolve(antwoord);
+    }
+    const ja = () => klaar(true);
+    const nee = () => klaar(false);
+    dubbelJaBtn.addEventListener("click", ja);
+    dubbelNeeBtn.addEventListener("click", nee);
+  });
+}
+
+async function bevestigBonnetje(extraction, values, negeerDubbel) {
   const res = await flowFetch(CONFIG.flowUrl, {
     Actie: "bevestig",
     PhotoRef: extraction.photoRef,
@@ -920,10 +951,13 @@ async function bevestigBonnetje(extraction, values) {
     Currency: values.currency,
     Vendor: values.vendor,
     ReceiptDate: values.receiptDate,
+    NegeerDubbel: !!negeerDubbel,
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
   const data = await res.json();
+  if (data.duplicate) return data;
   if (!data.success) throw new Error(data.error || "opslaan mislukt");
+  return null;
 }
 
 // Loopt de hele wizard (croppen -> lezen -> controleren -> opslaan) af
@@ -933,6 +967,7 @@ async function bevestigBonnetje(extraction, values) {
 async function runBonWizard(files, meta) {
   const mislukt = [];
   let gelukt = 0;
+  let overgeslagen = 0;
   let geannuleerd = false;
   wizardOverlay.hidden = false;
   try {
@@ -983,8 +1018,19 @@ async function runBonWizard(files, meta) {
         showWizardStep("loading");
         setWizardLoadingText("Bonnetje wordt opgeslagen...");
         try {
-          await bevestigBonnetje(extraction, values);
-          gelukt++;
+          const dubbel = await bevestigBonnetje(extraction, values, false);
+          if (dubbel) {
+            if (await vraagDubbel(dubbel, values)) {
+              showWizardStep("loading");
+              setWizardLoadingText("Bonnetje wordt opgeslagen...");
+              await bevestigBonnetje(extraction, values, true);
+              gelukt++;
+            } else {
+              overgeslagen++;
+            }
+          } else {
+            gelukt++;
+          }
         } catch (err) {
           mislukt.push(files[i]);
           setWizardStatus("Kon dit bonnetje niet opslaan: " + err.message, "error");
@@ -998,7 +1044,7 @@ async function runBonWizard(files, meta) {
     wizardOverlay.hidden = true;
     wizardCancelHandler = null;
   }
-  return { gelukt, mislukt, geannuleerd };
+  return { gelukt, mislukt, geannuleerd, overgeslagen };
 }
 
 // --- Tabs ---
@@ -1348,7 +1394,7 @@ form.addEventListener("submit", async (e) => {
   setStatus("");
 
   try {
-    const { gelukt, mislukt, geannuleerd } = await runBonWizard(teVersturen, {
+    const { gelukt, mislukt, geannuleerd, overgeslagen } = await runBonWizard(teVersturen, {
       submittedBy,
       submittedByEmail,
       categorie: categorieSelect.value,
@@ -1360,7 +1406,13 @@ form.addEventListener("submit", async (e) => {
     renderPhotoPreviews();
 
     if (!mislukt.length) {
-      setStatus(gelukt === 1 ? "Bon verstuurd, bedankt!" : `${gelukt} bonnen verstuurd, bedankt!`, "success");
+      if (!overgeslagen) {
+        setStatus(gelukt === 1 ? "Bon verstuurd, bedankt!" : `${gelukt} bonnen verstuurd, bedankt!`, "success");
+      } else if (gelukt) {
+        setStatus(`${gelukt} bon(nen) verstuurd, ${overgeslagen} als dubbel overgeslagen.`, "success");
+      } else {
+        setStatus(`${overgeslagen} bon(nen) als dubbel overgeslagen, er is niets verstuurd.`);
+      }
       form.reset();
       fillSelect(wieBenJijSelect, [...CONFIG.employees, "Anders"]);
       fillSelect(categorieSelect, CONFIG.categories);

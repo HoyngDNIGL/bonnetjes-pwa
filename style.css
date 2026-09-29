@@ -1079,3 +1079,12 @@ button#uitbetaalSubmitBtn:disabled {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* Waarschuwing bij een mogelijk dubbele bon (boven de wizard en de toegangscode) */
+.dubbel-overlay {
+  z-index: 450;
+}
+
+.dubbel-overlay .wizard-actions {
+  margin-top: 16px;
+}
