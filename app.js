@@ -1020,6 +1020,7 @@ function selectTab(name) {
     tabButtons[key].setAttribute("aria-selected", String(active));
     tabPanels[key].hidden = !active;
   }
+  if (name === "uitbetaal" && pincodeOntgrendeld) laadLijstEenmaal();
 }
 
 for (const key of Object.keys(tabButtons)) {
@@ -1170,7 +1171,11 @@ overzichtForm.addEventListener("submit", async (e) => {
 // broncode, net als de rest van de configuratie. Voor dit team en dit
 // risiconiveau (geen login op de hele app, zie config.js) is dat bewust
 // voldoende.
-const pinCijfers = Array.from(document.querySelectorAll(".pin-cijfer"));
+const pinCijfers = Array.from(document.querySelectorAll(".pin-cijfer:not([data-pin-groep])"));
+const pinCijfersOverzicht = Array.from(document.querySelectorAll('.pin-cijfer[data-pin-groep="overzicht"]'));
+const pincodeWrapOverzicht = document.getElementById("pincodeWrapOverzicht");
+const pincodeStatusMsgOverzicht = document.getElementById("pincodeStatusMsgOverzicht");
+const overzichtInhoud = document.getElementById("overzichtInhoud");
 const pincodeWrap = document.getElementById("pincodeWrap");
 const pincodeStatusMsg = document.getElementById("pincodeStatusMsg");
 const uitbetaalActieWrap = document.getElementById("uitbetaalActieWrap");
@@ -1224,42 +1229,65 @@ deselecteerAllesBtn.addEventListener("click", () => {
 // Individuele pincode-vakjes die vanzelf doorschakelen en automatisch
 // controleren zodra alle vakjes gevuld zijn (zoals een telefoon-pincode),
 // i.p.v. één tekstveld met een aparte "Ontgrendelen"-knop.
-function checkPincode() {
-  const waarde = pinCijfers.map((el) => el.value).join("");
-  if (waarde.length < pinCijfers.length) return;
+// Eén pincode voor de tabbladen Overzicht en Uitbetalen: is er één
+// ontgrendeld, dan is de ander voor de rest van deze sessie ook open.
+let pincodeOntgrendeld = false;
+let bonnenlijstGeladen = false;
 
-  if (waarde === CONFIG.uitbetaalPincode) {
-    pincodeWrap.hidden = true;
-    uitbetaalActieWrap.hidden = false;
-    laadBonnetjesLijst();
-  } else {
-    pincodeStatusMsg.textContent = "Onjuiste pincode.";
-    pincodeStatusMsg.dataset.state = "error";
-    pinCijfers.forEach((el) => {
-      el.value = "";
-      el.dataset.error = "true";
-    });
-    pinCijfers[0].focus();
-    setTimeout(() => pinCijfers.forEach((el) => delete el.dataset.error), 300);
-  }
+function laadLijstEenmaal() {
+  if (bonnenlijstGeladen) return;
+  bonnenlijstGeladen = true;
+  laadBonnetjesLijst();
 }
 
-pinCijfers.forEach((el, i) => {
-  el.addEventListener("input", () => {
-    el.value = el.value.replace(/\D/g, "").slice(0, 1);
-    delete pincodeStatusMsg.dataset.state;
-    pincodeStatusMsg.textContent = "";
-    if (el.value && i < pinCijfers.length - 1) {
-      pinCijfers[i + 1].focus();
+function ontgrendelPincode() {
+  pincodeOntgrendeld = true;
+  pincodeWrap.hidden = true;
+  uitbetaalActieWrap.hidden = false;
+  pincodeWrapOverzicht.hidden = true;
+  overzichtInhoud.hidden = false;
+  if (!tabPanels.uitbetaal.hidden) laadLijstEenmaal();
+}
+
+function koppelPincode(cijfers, statusEl) {
+  function controleer() {
+    const waarde = cijfers.map((el) => el.value).join("");
+    if (waarde.length < cijfers.length) return;
+
+    if (waarde === CONFIG.uitbetaalPincode) {
+      ontgrendelPincode();
+    } else {
+      statusEl.textContent = "Onjuiste pincode.";
+      statusEl.dataset.state = "error";
+      cijfers.forEach((el) => {
+        el.value = "";
+        el.dataset.error = "true";
+      });
+      cijfers[0].focus();
+      setTimeout(() => cijfers.forEach((el) => delete el.dataset.error), 300);
     }
-    checkPincode();
+  }
+
+  cijfers.forEach((el, i) => {
+    el.addEventListener("input", () => {
+      el.value = el.value.replace(/\D/g, "").slice(0, 1);
+      delete statusEl.dataset.state;
+      statusEl.textContent = "";
+      if (el.value && i < cijfers.length - 1) {
+        cijfers[i + 1].focus();
+      }
+      controleer();
+    });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !el.value && i > 0) {
+        cijfers[i - 1].focus();
+      }
+    });
   });
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Backspace" && !el.value && i > 0) {
-      pinCijfers[i - 1].focus();
-    }
-  });
-});
+}
+
+koppelPincode(pinCijfers, pincodeStatusMsg);
+koppelPincode(pinCijfersOverzicht, pincodeStatusMsgOverzicht);
 
 uitbetaalSubmitBtn.addEventListener("click", async () => {
   if (!CONFIG.flow4Url) {
