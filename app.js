@@ -767,10 +767,19 @@ async function extractBonnetje(file, index) {
   const photoBase64 = pdf ? await fileToBase64(file) : await compressImageToBase64(file, 1600, 0.75);
   const contentType = pdf ? "application/pdf" : "image/jpeg";
   const filename = `${Date.now()}_${index}.${pdf ? "pdf" : "jpg"}`;
+  let previewBase64 = "";
+  if (pdf) {
+    try {
+      const dataUrl = await renderPdfThumbnail(file, 1400);
+      previewBase64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+    } catch (err) {
+      previewBase64 = "";
+    }
+  }
   const res = await fetch(CONFIG.flowUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType }),
+    body: JSON.stringify({ Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType, PreviewBase64: previewBase64 }),
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
   const data = await res.json();
@@ -790,6 +799,7 @@ async function bevestigBonnetje(extraction, values) {
     body: JSON.stringify({
       Actie: "bevestig",
       PhotoRef: extraction.photoRef,
+      PreviewRef: extraction.previewRef || "",
       FileName: extraction.filename,
       SubmittedBy: values.submittedBy,
       SubmittedByEmail: values.submittedByEmail,
