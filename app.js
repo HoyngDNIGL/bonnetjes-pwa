@@ -1178,6 +1178,17 @@ function formatDatumInput(e) {
 startdatumInput.addEventListener("input", formatDatumInput);
 einddatumInput.addEventListener("input", formatDatumInput);
 
+// Standaard de hele vorige maand (1e t/m laatste dag), aanpasbaar door de
+// gebruiker. In januari geeft new Date(jaar, -1, 1) vanzelf december vorig jaar.
+(function zetVorigeMaandAlsStandaard() {
+  const nu = new Date();
+  const eerste = new Date(nu.getFullYear(), nu.getMonth() - 1, 1);
+  const laatste = new Date(nu.getFullYear(), nu.getMonth(), 0);
+  const fmt = (d) => `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+  startdatumInput.value = fmt(eerste);
+  einddatumInput.value = fmt(laatste);
+})();
+
 // Parses a strict dd-mm-jjjj string, rejecting both malformed input and
 // calendar-invalid dates (e.g. 31-02-2026) -- returns null for either.
 function parseDutchDate(value) {
