@@ -214,7 +214,6 @@ const toegangOverlay = document.getElementById("toegangOverlay");
 const toegangForm = document.getElementById("toegangForm");
 const toegangInput = document.getElementById("toegangInput");
 const toegangFout = document.getElementById("toegangFout");
-const toegangWijzigBtn = document.getElementById("toegangWijzigBtn");
 let toegangGeheugen = "";
 let toegangWachtend = null;
 
@@ -287,11 +286,6 @@ async function flowFetch(url, body) {
   }
   throw new Error("geen toegang (onjuiste toegangscode)");
 }
-
-toegangWijzigBtn.addEventListener("click", () => {
-  wisToegangscode();
-  vraagToegangscode("");
-});
 
 function setStatus(text, state) {
   statusMsg.textContent = text;

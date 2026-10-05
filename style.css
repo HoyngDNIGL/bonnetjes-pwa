@@ -1066,20 +1066,6 @@ button#uitbetaalSubmitBtn:disabled {
   margin-top: 12px;
 }
 
-.toegang-wijzig {
-  margin: 24px 0 16px;
-  text-align: center;
-}
-
-.toegang-wijzig button {
-  border: 0;
-  background: none;
-  color: var(--caption);
-  font-size: 12px;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 /* Waarschuwing bij een mogelijk dubbele bon (boven de wizard en de toegangscode) */
 .dubbel-overlay {
   z-index: 450;
