@@ -330,8 +330,21 @@ function titleCase(text) {
 // Returns the select's value, or the free-text "Anders" field's value
 // (title-cased) when "Anders" is chosen -- the flow always receives a
 // plain name/client string either way, no special-casing needed downstream.
-function resolveWithAnders(select, andersInput) {
-  return select.value === "Anders" ? titleCase(andersInput.value) : select.value;
+// Klantnamen: alleen een woord dat helemaal uit kleine letters bestaat krijgt
+// een hoofdletter ("acme" -> "Acme"); wat al hoofdletters bevat blijft zoals
+// getypt ("Test BV", "NA", "iPhone Shop"). titleCase zou van "BV" een "Bv" maken.
+// Het opzoeken in Clients is hoofdletterongevoelig, dus een afwijkende
+// schrijfwijze maakt geen dubbele klant.
+function normaliseKlantnaam(text) {
+  return text
+    .trim()
+    .split(/\s+/)
+    .map((word) => (word === word.toLowerCase() ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
+
+function resolveWithAnders(select, andersInput, normaliseer = titleCase) {
+  return select.value === "Anders" ? normaliseer(andersInput.value) : select.value;
 }
 
 // E-mailadres voor de "Needs EUR amount"-notificatie: bij een vaste
@@ -885,7 +898,7 @@ function runConfirmStep(file, extraction, meta) {
       }
       const categorie = confirmCategorieSelect.value;
       const toelichting = categorie === "Anders" ? confirmToelichtingInput.value.trim() : "";
-      const klant = resolveWithAnders(confirmKlantSelect, confirmKlantAndersInput);
+      const klant = resolveWithAnders(confirmKlantSelect, confirmKlantAndersInput, normaliseKlantnaam);
       if (!klant) {
         setWizardStatus("Vul de klantnaam in.", "error");
         return;
@@ -1267,7 +1280,7 @@ overzichtForm.addEventListener("submit", async (e) => {
   }
 
   const filterType = document.querySelector('input[name="filterType"]:checked').value;
-  const klantVoorOverzicht = resolveWithAnders(overzichtKlantSelect, overzichtKlantAndersInput);
+  const klantVoorOverzicht = resolveWithAnders(overzichtKlantSelect, overzichtKlantAndersInput, normaliseKlantnaam);
   if (filterType === "klant" && !klantVoorOverzicht) {
     setOverzichtStatus("Vul de naam van de klant in.", "error");
     return;
@@ -1467,7 +1480,7 @@ form.addEventListener("submit", async (e) => {
     setStatus("Vul een geldig e-mailadres in.", "error");
     return;
   }
-  const klant = resolveWithAnders(klantSelect, klantAndersInput);
+  const klant = resolveWithAnders(klantSelect, klantAndersInput, normaliseKlantnaam);
   if (!klant) {
     setStatus("Vul de klantnaam in.", "error");
     return;

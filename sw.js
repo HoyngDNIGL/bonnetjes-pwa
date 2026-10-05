@@ -1,4 +1,4 @@
-const CACHE_NAME = "bonnetjes-v8";
+const CACHE_NAME = "bonnetjes-v9";
 const SHELL_FILES = [
   "./",
   "style.css",
