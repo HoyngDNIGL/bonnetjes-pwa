@@ -1153,11 +1153,30 @@ updateFilterTypeUI();
 // <input type="date">, whose displayed/typed format follows the OS
 // language and can silently swap day/month).
 function formatDatumInput(e) {
-  const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
-  let out = digits;
-  if (digits.length > 4) out = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
-  else if (digits.length > 2) out = `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  e.target.value = out;
+  const value = e.target.value;
+  let out;
+  if (!value.includes("-")) {
+    // Nog geen streepjes (cijfers typen of plakken): verdeel de cijfers over dag-maand-jaar.
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    out = digits;
+    if (digits.length > 4) out = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+    else if (digits.length > 2) out = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  } else {
+    // Er staan streepjes: dag, maand en jaar blijven elk op hun eigen plek, zodat
+    // een cijfer wissen in het ene blok de andere blokken niet laat verschuiven.
+    const delen = value.split("-").slice(0, 3).map((d) => d.replace(/\D/g, ""));
+    const max = [2, 2, 4];
+    for (let i = 0; i < delen.length; i++) {
+      if (delen[i].length > max[i] && i === delen.length - 1 && i < 2) {
+        // Aan het eind getypt over de blokgrens: het teveel start het volgende blok.
+        delen.push(delen[i].slice(max[i]));
+      }
+      delen[i] = delen[i].slice(0, max[i]);
+    }
+    out = delen.join("-");
+  }
+  // Alleen terugschrijven als het echt verandert, anders springt de cursor naar het eind.
+  if (e.target.value !== out) e.target.value = out;
 }
 startdatumInput.addEventListener("input", formatDatumInput);
 einddatumInput.addEventListener("input", formatDatumInput);
