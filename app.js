@@ -47,6 +47,60 @@ async function renderPdfThumbnail(file, maxDim) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
+// Layoutplaatjes voor het uitbetaaloverzicht (Flow 2 plakt ze zonder marges
+// op A4): een PDF-bon wordt een kwartslag naar rechts gedraaid op een A5-
+// liggend vlak (2 per pagina), een foto-bon past in een staand kwart-A4-vak
+// (4 per pagina). Vaste verhoudingen 210:148,5 en 105:148,5, wit eromheen.
+const LAYOUT_PDF_W = 1500, LAYOUT_PDF_H = 1060;
+const LAYOUT_BON_W = 840, LAYOUT_BON_H = 1188;
+
+function drawContained(ctx, src, sw, sh, W, H) {
+  const k = Math.min(W / sw, H / sh);
+  const w = sw * k, h = sh * k;
+  ctx.drawImage(src, (W - w) / 2, (H - h) / 2, w, h);
+}
+
+async function renderPdfLayout(file) {
+  const src = await renderPdfThumbnail(file, 2600);
+  const img = await new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = reject;
+    el.src = src;
+  });
+  let rotated = img, rw = img.width, rh = img.height;
+  if (img.height > img.width) {
+    const c = document.createElement("canvas");
+    c.width = img.height;
+    c.height = img.width;
+    const cx = c.getContext("2d");
+    cx.translate(c.width, 0);
+    cx.rotate(Math.PI / 2);
+    cx.drawImage(img, 0, 0);
+    rotated = c; rw = c.width; rh = c.height;
+  }
+  const out = document.createElement("canvas");
+  out.width = LAYOUT_PDF_W;
+  out.height = LAYOUT_PDF_H;
+  const ctx = out.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, out.width, out.height);
+  drawContained(ctx, rotated, rw, rh, out.width, out.height);
+  return out.toDataURL("image/jpeg", 0.85);
+}
+
+async function renderPhotoLayout(file) {
+  const bmp = await createImageBitmap(file);
+  const out = document.createElement("canvas");
+  out.width = LAYOUT_BON_W;
+  out.height = LAYOUT_BON_H;
+  const ctx = out.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, out.width, out.height);
+  drawContained(ctx, bmp, bmp.width, bmp.height, out.width, out.height);
+  return out.toDataURL("image/jpeg", 0.8);
+}
+
 // Verhoogd bij elke renderPhotoPreviews-aanroep -- zo kan een nog lopende
 // async PDF-render (hieronder) zichzelf herkennen als verouderd wanneer de
 // lijst intussen is aangepast (bestand verwijderd/opnieuw gekozen) en zich
@@ -891,8 +945,18 @@ async function extractBonnetje(file, index) {
       previewBase64 = "";
     }
   }
+  // Layoutplaatje voor het overzicht; mislukt het, dan blijft de bon gewoon
+  // werken (Flow 2 valt terug op de oude weergave).
+  let layoutBase64 = "";
+  try {
+    const dataUrl = pdf ? await renderPdfLayout(file) : await renderPhotoLayout(file);
+    layoutBase64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  } catch (err) {
+    layoutBase64 = "";
+  }
   const res = await flowFetch(CONFIG.flowUrl, {
     Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType, PreviewBase64: previewBase64,
+    LayoutBase64: layoutBase64,
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
   const data = await res.json();
@@ -941,6 +1005,7 @@ async function bevestigBonnetje(extraction, values, negeerDubbel) {
     Actie: "bevestig",
     PhotoRef: extraction.photoRef,
     PreviewRef: extraction.previewRef || "",
+    LayoutRef: extraction.layoutRef || "",
     FileName: extraction.filename,
     SubmittedBy: values.submittedBy,
     SubmittedByEmail: values.submittedByEmail,
@@ -1217,11 +1282,7 @@ overzichtForm.addEventListener("submit", async (e) => {
 // broncode, net als de rest van de configuratie. Voor dit team en dit
 // risiconiveau (geen login op de hele app, zie config.js) is dat bewust
 // voldoende.
-const pinCijfers = Array.from(document.querySelectorAll(".pin-cijfer:not([data-pin-groep])"));
-const pinCijfersOverzicht = Array.from(document.querySelectorAll('.pin-cijfer[data-pin-groep="overzicht"]'));
-const pincodeWrapOverzicht = document.getElementById("pincodeWrapOverzicht");
-const pincodeStatusMsgOverzicht = document.getElementById("pincodeStatusMsgOverzicht");
-const overzichtInhoud = document.getElementById("overzichtInhoud");
+const pinCijfers = Array.from(document.querySelectorAll(".pin-cijfer"));
 const pincodeWrap = document.getElementById("pincodeWrap");
 const pincodeStatusMsg = document.getElementById("pincodeStatusMsg");
 const uitbetaalActieWrap = document.getElementById("uitbetaalActieWrap");
@@ -1275,8 +1336,8 @@ deselecteerAllesBtn.addEventListener("click", () => {
 // Individuele pincode-vakjes die vanzelf doorschakelen en automatisch
 // controleren zodra alle vakjes gevuld zijn (zoals een telefoon-pincode),
 // i.p.v. één tekstveld met een aparte "Ontgrendelen"-knop.
-// Eén pincode voor de tabbladen Overzicht en Uitbetalen: is er één
-// ontgrendeld, dan is de ander voor de rest van deze sessie ook open.
+// De pincode beschermt alleen het tabblad Uitbetalen (items op Paid zetten);
+// het tabblad Overzicht is vrij toegankelijk.
 let pincodeOntgrendeld = false;
 let bonnenlijstGeladen = false;
 
@@ -1290,8 +1351,6 @@ function ontgrendelPincode() {
   pincodeOntgrendeld = true;
   pincodeWrap.hidden = true;
   uitbetaalActieWrap.hidden = false;
-  pincodeWrapOverzicht.hidden = true;
-  overzichtInhoud.hidden = false;
   if (!tabPanels.uitbetaal.hidden) laadLijstEenmaal();
 }
 
@@ -1333,7 +1392,6 @@ function koppelPincode(cijfers, statusEl) {
 }
 
 koppelPincode(pinCijfers, pincodeStatusMsg);
-koppelPincode(pinCijfersOverzicht, pincodeStatusMsgOverzicht);
 
 uitbetaalSubmitBtn.addEventListener("click", async () => {
   if (!CONFIG.flow4Url) {
