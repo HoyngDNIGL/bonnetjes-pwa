@@ -1132,11 +1132,13 @@ const medewerkerSelect = document.getElementById("medewerker");
 const overzichtKlantSelect = document.getElementById("overzichtKlant");
 const medewerkerWrap = document.getElementById("medewerkerWrap");
 const overzichtKlantWrap = document.getElementById("overzichtKlantWrap");
+const overzichtKlantAndersWrap = document.getElementById("overzichtKlantAndersWrap");
+const overzichtKlantAndersInput = document.getElementById("overzichtKlantAnders");
 const filterTypeRadios = document.querySelectorAll('input[name="filterType"]');
 const emailInput = document.getElementById("email");
 
 fillSelect(medewerkerSelect, CONFIG.employees);
-fillSelect(overzichtKlantSelect, CONFIG.clients);
+fillSelect(overzichtKlantSelect, [...CONFIG.clients, "Anders"]);
 
 // Medewerker and Klant are mutually exclusive filters -- only one select
 // shows at a time, so it's never ambiguous which one actually applies.
@@ -1144,7 +1146,9 @@ function updateFilterTypeUI() {
   const active = document.querySelector('input[name="filterType"]:checked').value;
   medewerkerWrap.hidden = active !== "medewerker";
   overzichtKlantWrap.hidden = active !== "klant";
+  overzichtKlantAndersWrap.hidden = active !== "klant" || overzichtKlantSelect.value !== "Anders";
 }
+overzichtKlantSelect.addEventListener("change", () => updateFilterTypeUI());
 filterTypeRadios.forEach((radio) => radio.addEventListener("change", updateFilterTypeUI));
 updateFilterTypeUI();
 
@@ -1183,14 +1187,15 @@ einddatumInput.addEventListener("input", formatDatumInput);
 
 // Standaard de hele vorige maand (1e t/m laatste dag), aanpasbaar door de
 // gebruiker. In januari geeft new Date(jaar, -1, 1) vanzelf december vorig jaar.
-(function zetVorigeMaandAlsStandaard() {
+function zetVorigeMaandAlsStandaard() {
   const nu = new Date();
   const eerste = new Date(nu.getFullYear(), nu.getMonth() - 1, 1);
   const laatste = new Date(nu.getFullYear(), nu.getMonth(), 0);
   const fmt = (d) => `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
   startdatumInput.value = fmt(eerste);
   einddatumInput.value = fmt(laatste);
-})();
+}
+zetVorigeMaandAlsStandaard();
 
 // Parses a strict dd-mm-jjjj string, rejecting both malformed input and
 // calendar-invalid dates (e.g. 31-02-2026) -- returns null for either.
@@ -1262,6 +1267,11 @@ overzichtForm.addEventListener("submit", async (e) => {
   }
 
   const filterType = document.querySelector('input[name="filterType"]:checked').value;
+  const klantVoorOverzicht = resolveWithAnders(overzichtKlantSelect, overzichtKlantAndersInput);
+  if (filterType === "klant" && !klantVoorOverzicht) {
+    setOverzichtStatus("Vul de naam van de klant in.", "error");
+    return;
+  }
 
   overzichtSubmitBtn.disabled = true;
   const stopVoortgang = startOverzichtVoortgang();
@@ -1270,7 +1280,7 @@ overzichtForm.addEventListener("submit", async (e) => {
       Startdatum: startdatum.iso,
       Einddatum: einddatum.iso,
       Medewerker: filterType === "medewerker" ? medewerkerSelect.value : "",
-      Klant: filterType === "klant" ? overzichtKlantSelect.value : "",
+      Klant: filterType === "klant" ? klantVoorOverzicht : "",
       Email: emailInput.value,
     });
 
@@ -1279,8 +1289,10 @@ overzichtForm.addEventListener("submit", async (e) => {
     stopVoortgang();
     setOverzichtStatus("Overzicht wordt gegenereerd, je ontvangt zo een e-mail.", "success");
     overzichtForm.reset();
+    zetVorigeMaandAlsStandaard();
     fillSelect(medewerkerSelect, CONFIG.employees);
-    fillSelect(overzichtKlantSelect, CONFIG.clients);
+    fillSelect(overzichtKlantSelect, [...CONFIG.clients, "Anders"]);
+    overzichtKlantAndersInput.value = "";
     updateFilterTypeUI();
   } catch (err) {
     stopVoortgang();

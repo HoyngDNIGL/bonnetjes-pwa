@@ -31,7 +31,7 @@ const CONFIG = {
   // and redeploying, which is fine at this scale.
   employees: ["Edwin", "Niels", "Stijn"],
   categories: ["Hotel", "Taxi", "Vlucht", "Tol", "Parkeren", "Lunch", "Diner", "Anders"],
-  clients: ["Arpa", "BME", "Broadview", "DNIGL", "Formica Asia", "Formica Europe", "Formica NA", "Trespa"],
+  clients: ["2Connect", "Arpa", "BME", "Broadview", "DNIGL", "Formica Asia", "Formica Europe", "Formica NA", "Trespa"],
 
   // E-mailadres per vaste medewerker, voor SubmittedByEmail (routering van de
   // "Needs EUR amount"-notificatie naar de daadwerkelijke indiener i.p.v. een
