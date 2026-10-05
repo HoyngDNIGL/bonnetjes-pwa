@@ -930,15 +930,6 @@ async function extractBonnetje(file, index) {
   const photoBase64 = pdf ? await fileToBase64(file) : await compressImageToBase64(file, 1600, 0.75);
   const contentType = pdf ? "application/pdf" : "image/jpeg";
   const filename = `${Date.now()}_${index}.${pdf ? "pdf" : "jpg"}`;
-  let previewBase64 = "";
-  if (pdf) {
-    try {
-      const dataUrl = await renderPdfThumbnail(file, 1400);
-      previewBase64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-    } catch (err) {
-      previewBase64 = "";
-    }
-  }
   // Layoutplaatje voor het overzicht; mislukt het, dan blijft de bon gewoon
   // werken (Flow 2 valt terug op de oude weergave).
   let layoutBase64 = "";
@@ -949,7 +940,7 @@ async function extractBonnetje(file, index) {
     layoutBase64 = "";
   }
   const res = await flowFetch(CONFIG.flowUrl, {
-    Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType, PreviewBase64: previewBase64,
+    Actie: "extract", FileName: filename, PhotoBase64: photoBase64, ContentType: contentType,
     LayoutBase64: layoutBase64,
   });
   if (!res.ok) throw new Error("serverfout (" + res.status + ")");
@@ -998,7 +989,6 @@ async function bevestigBonnetje(extraction, values, negeerDubbel) {
   const res = await flowFetch(CONFIG.flowUrl, {
     Actie: "bevestig",
     PhotoRef: extraction.photoRef,
-    PreviewRef: extraction.previewRef || "",
     LayoutRef: extraction.layoutRef || "",
     FileName: extraction.filename,
     SubmittedBy: values.submittedBy,
